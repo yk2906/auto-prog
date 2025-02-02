@@ -6,7 +6,7 @@ from google.oauth2.service_account import Credentials
 
 # 認証情報の設定
 SCOPES = ["https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_file('norse-appliance-447500-r6-bd7298cdbc4b.json', scopes=SCOPES)
+creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
 
 # Google Drive APIクライアントの作成
 drive_service = build('drive', 'v3', credentials=creds)
