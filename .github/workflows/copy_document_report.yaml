@@ -32,4 +32,4 @@ jobs:
 
       - name: execute to copy Google Document
         run: python copy_document_report.py
-        working-directory: /home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}
+        working-directory: /home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/google_document
