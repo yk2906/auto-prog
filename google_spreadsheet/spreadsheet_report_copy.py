@@ -60,6 +60,7 @@ def copy_latest_sheet_and_clear_cells(spreadsheet_id, cells_to_clear):
         print(f"新しいシート '{new_sheet_title}' を作成しました。")
         
         # 特定のセルを空白にする
+        today_date = datetime.datetime.now().strftime("%-m/%-d/%Y")
         requests = [
             {
                 "updateCells": {
@@ -76,6 +77,21 @@ def copy_latest_sheet_and_clear_cells(spreadsheet_id, cells_to_clear):
             }
             for cell_row, cell_col in cells_to_clear
         ]
+
+        requests.append({
+            "updateCells": {
+                "range": {
+                    "sheetId": new_sheet_id,
+                    "startRowIndex": 7,  # 8行目 (0ベース)
+                    "endRowIndex": 8,
+                    "startColumnIndex": 4,  # 5列目 (0ベース)
+                    "endColumnIndex": 5
+                },
+                "rows": [{"values": [{"userEnteredValue": {"stringValue": today_date}}]}],
+                "fields": "userEnteredValue"
+            }
+        })
+
         body = {"requests": requests}
         sheets_service.spreadsheets().batchUpdate(
             spreadsheetId=spreadsheet_id, body=body).execute()
@@ -89,5 +105,5 @@ def copy_latest_sheet_and_clear_cells(spreadsheet_id, cells_to_clear):
 # メイン処理
 # spreadsheet_id = "1DPFGhoYOmU9y_gB4-MeDG5jxJjok4-iUziByiqLkBPc"  # 対象スプレッドシートID
 spreadsheet_id = "10HCD2O0Ltd7RpVabQ5_TlbY9UipFIJJug0qQzUq_Tog"
-cells_to_clear = [(9, 4), (15, 2), (22, 2), (28, 2)]  # 空白にするセルのリスト（(行, 列)形式で指定、1始まり）
+cells_to_clear = [(8, 5), (9, 4), (15, 2), (22, 2), (28, 2)]  # 空白にするセルのリスト（(行, 列)形式で指定、1始まり）
 copy_latest_sheet_and_clear_cells(spreadsheet_id, cells_to_clear)
