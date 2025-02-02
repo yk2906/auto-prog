@@ -7,7 +7,7 @@ name: google gocument copy
 
 on:
   schedule:
-    - cron: '0 0 5 * *'
+    - cron: '0 0 1 * *'
 
 env:
   WORKING_DIR: '/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}'
