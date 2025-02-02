@@ -6,7 +6,7 @@ from google.oauth2.service_account import Credentials
 
 # 認証情報の設定
 SCOPES = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets"]
-creds = Credentials.from_service_account_file('norse-appliance-447500-r6-30cf69d40489.json', scopes=SCOPES)
+creds = Credentials.from_service_account_file('norse-appliance-447500-r6-bd7298cdbc4b.json', scopes=SCOPES)
 
 # Google Drive APIクライアントの作成
 drive_service = build('drive', 'v3', credentials=creds)
@@ -87,6 +87,7 @@ def copy_latest_sheet_and_clear_cells(spreadsheet_id, cells_to_clear):
         print(f"予期しないエラーが発生しました: {e}")
 
 # メイン処理
-spreadsheet_id = "1DPFGhoYOmU9y_gB4-MeDG5jxJjok4-iUziByiqLkBPc"  # 対象スプレッドシートID
-cells_to_clear = [(9, 4), (15, 2), (22, 2)]  # 空白にするセルのリスト（(行, 列)形式で指定、1始まり）
+# spreadsheet_id = "1DPFGhoYOmU9y_gB4-MeDG5jxJjok4-iUziByiqLkBPc"  # 対象スプレッドシートID
+spreadsheet_id = "10HCD2O0Ltd7RpVabQ5_TlbY9UipFIJJug0qQzUq_Tog"
+cells_to_clear = [(9, 4), (15, 2), (22, 2), (28, 2)]  # 空白にするセルのリスト（(行, 列)形式で指定、1始まり）
 copy_latest_sheet_and_clear_cells(spreadsheet_id, cells_to_clear)
