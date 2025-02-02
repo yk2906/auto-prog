@@ -6,6 +6,9 @@ name: google gocument copy
 #   schedule:
 #     - cron: '0 0 1 * *'
 
+env:
+  WORKING_DIR: '/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}'
+
 on:
   push:
     branches:
@@ -28,8 +31,8 @@ jobs:
         run: pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
 
       - name: save credential
-        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > /home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/google_document/credentials.json
+        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > ${{ env.WORKING_DIR }}/google_document/credentials.json
 
       - name: execute to copy Google Document
         run: python copy_document_report.py
-        working-directory: /home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/google_document
+        working-directory: ${{ env.WORKING_DIR }}/google_document
