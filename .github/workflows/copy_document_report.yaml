@@ -1,18 +1,16 @@
 name: google gocument copy
 
-
-
 # on:
-#   schedule:
-#     - cron: '0 0 1 * *'
+#   push:
+#     branches:
+#       - master
+
+on:
+  schedule:
+    - cron: '0 0 5 * *'
 
 env:
   WORKING_DIR: '/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}'
-
-on:
-  push:
-    branches:
-      - master
 
 jobs:
   copy_google_doc:
