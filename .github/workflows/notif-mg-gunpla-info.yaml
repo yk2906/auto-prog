@@ -7,6 +7,7 @@ on:
 
 env:
   WORKING_DIR: '/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}'
+  GUNPLA_SLACK_WEBHOOK_URL: ${{ secrets.GUNPLA_SLACK_WEBHOOK_URL }}
 
 jobs:
   scraping:
@@ -33,7 +34,7 @@ jobs:
       - name: Send notification to Slack
         uses: slackapi/slack-github-action@v1
         with:
-          webhookUrl: ${{ secrets.GUNPLA_SLACK_TOKEN }}
+          webhookUrl: ${{ secrets.GUNPLA_SLACK_WEBHOOK_URL }}
           channel: "notif-mg-gunpla-info"
           text: "スクレイピングが完了しました。"
           payload-file-path-parsed: true
