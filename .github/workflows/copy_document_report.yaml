@@ -29,8 +29,8 @@ jobs:
         run: pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
 
       - name: save credential
-        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > ${{ env.WORKING_DIR }}/google_document/credentials.json
+        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > ${{ env.WORKING_DIR }}/google_auto/google_document/credentials.json
 
       - name: execute to copy Google Document
         run: python copy_document_report.py
-        working-directory: ${{ env.WORKING_DIR }}/google_document
+        working-directory: ${{ env.WORKING_DIR }}/google_auto/google_document
