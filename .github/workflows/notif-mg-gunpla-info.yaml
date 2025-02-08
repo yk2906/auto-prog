@@ -5,6 +5,9 @@ on:
     - cron: '0 0 1,15 * *'
   workflow_dispatch:
 
+env:
+  WORKING_DIR: '/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}'
+
 jobs:
   scraping:
     runs-on: ubuntu-latest
@@ -25,7 +28,7 @@ jobs:
 
       - name: Run the scraper
         run: |
-          python notif-mg-gunpla-info.py
+          python ${{ env.WORKING_DIR }}/notif-mg-gunpla-info.py
 
       - name: Send notification to Slack
         uses: slackapi/slack-github-action@v1
