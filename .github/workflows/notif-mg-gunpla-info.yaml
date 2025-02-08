@@ -33,6 +33,7 @@ jobs:
       - name: Send notification to Slack
         uses: slackapi/slack-github-action@v1
         with:
-          slack_token: ${{ secrets.GUNPLA_SLACK_TOKEN }}
+          webhookUrl: ${{ secrets.GUNPLA_SLACK_TOKEN }}
           channel: "notif-mg-gunpla-info"
           text: "スクレイピングが完了しました。"
+          payload-file-path-parsed: true
