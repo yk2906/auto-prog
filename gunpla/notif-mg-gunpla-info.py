@@ -30,9 +30,9 @@ if target_div:
         for a in a_elements:
             href = a.get("href")
             if href:
-                results.append({href})
+                results.append(href)
             for span in span_elements:
-                results.append({span.text.strip()})
+                results.append(span.text.strip())
 
 
 else:
