@@ -7,7 +7,6 @@ on:
 
 env:
   WORKING_DIR: '/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}'
-  GUNPLA_SLACK_WEBHOOK_URL: ${{ secrets.GUNPLA_SLACK_WEBHOOK_URL }}
 
 jobs:
   scraping:
