@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  WORKING_DIR: '/home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}'
+  WORKING_DIR: ${{ github.workspace }}
 
 jobs:
   scraping:
@@ -30,10 +30,12 @@ jobs:
         run: |
           python ${{ env.WORKING_DIR }}/gunpla/notif-mg-gunpla-info.py
 
+      - name: Debug Slack Webhook
+        run: echo "Webhook URL is set"
+
       - name: Send notification to Slack
         uses: slackapi/slack-github-action@v1
         with:
           webhookUrl: ${{ secrets.GUNPLA_SLACK_WEBHOOK_URL }}
           channel: "notif-mg-gunpla-info"
           text: "スクレイピングが完了しました。"
-          payload-file-path-parsed: true
