@@ -38,6 +38,4 @@ if target_div:
 else:
     results.append("指定の <div> タグが見つかりませんでした。")
 
-with open("result.txt", "w") as f:
-    for line in results:
-        f.write(str(line) + "\n")
+print("RESULT_CONTENT=" + "\\n".join(results))

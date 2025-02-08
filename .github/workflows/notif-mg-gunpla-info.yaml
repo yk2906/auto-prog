@@ -42,9 +42,16 @@ jobs:
             echo "RESULT_CONTENT=結果が見つかりません。" >> $GITHUB_ENV
           fi
 
-      - name: Debug Slack Webhook
-        run: echo "Webhook URL is set"
 
+      - name: Run the scraper
+        id: run_scraper
+        run: |
+          RESULT=$(python ${{ env.WORKING_DIR }}/gunpla/notif-mg-gunpla-info.py)
+          echo "$RESULT"
+          echo "RESULT_CONTENT<<EOF" >> $GITHUB_ENV
+          echo "$RESULT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+  
       - name: Send notification to Slack
         uses: slackapi/slack-github-action@v2.0.0
         with:
