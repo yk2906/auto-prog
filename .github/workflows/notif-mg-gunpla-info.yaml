@@ -28,7 +28,7 @@ jobs:
 
       - name: Run the scraper
         run: |
-          python ${{ env.WORKING_DIR }}/notif-mg-gunpla-info.py
+          python ${{ env.WORKING_DIR }}/gunpla/notif-mg-gunpla-info.py
 
       - name: Send notification to Slack
         uses: slackapi/slack-github-action@v1
