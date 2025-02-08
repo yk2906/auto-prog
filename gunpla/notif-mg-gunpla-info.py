@@ -40,4 +40,4 @@ else:
 
 with open("result.txt", "w") as f:
     for line in results:
-        f.write(line + "\n")
+        f.write(str(line) + "\n")
