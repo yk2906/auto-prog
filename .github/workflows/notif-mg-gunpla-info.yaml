@@ -36,6 +36,6 @@ jobs:
       - name: Send notification to Slack
         uses: slackapi/slack-github-action@v1
         with:
-          webhookUrl: ${{ secrets.GUNPLA_SLACK_WEBHOOK_URL }}
-          channel: "notif-mg-gunpla-info"
+          webhook: ${{ secrets.GUNPLA_SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
           text: "スクレイピングが完了しました。"
