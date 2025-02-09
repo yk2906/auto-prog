@@ -33,9 +33,9 @@ if target_div:
                 span_texts = [span.text.strip() for span in span_elements if span.text.strip()]
                 span_texts_str = "\\n".join(span_texts) if span_texts else "No title"
 
-                results.append(f"{span_texts_str}: {href}")
+                results.append(f"- {span_texts_str}\n {href}")
 
 else:
     results.append("指定の <div> タグが見つかりませんでした。")
 
-print("RESULT_CONTENT=" + "\\n".join(results))
+print(results)
