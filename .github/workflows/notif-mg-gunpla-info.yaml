@@ -27,31 +27,13 @@ jobs:
           pip install requests beautifulsoup4
 
       - name: Run the scraper
-        run: |
-          python ${{ env.WORKING_DIR }}/gunpla/notif-mg-gunpla-info.py
-
-      # - name: Read result.txt
-      #   id: read_result
-      #   run: |
-      #     if [ -f "${{ env.WORKING_DIR }}/gunpla/result.txt" ]; then
-      #       content=$(cat "${{ env.WORKING_DIR }}/gunpla/result.txt")
-      #       echo "RESULT_CONTENT<<EOF" >> $GITHUB_ENV
-      #       echo "$content" >> $GITHUB_ENV
-      #       echo "EOF" >> $GITHUB_ENV
-      #     else
-      #       echo "RESULT_CONTENT=結果が見つかりません。" >> $GITHUB_ENV
-      #     fi
-
-
-      - name: Run the scraper
         id: run_scraper
         run: |
           RESULT=$(python ${{ env.WORKING_DIR }}/gunpla/notif-mg-gunpla-info.py)
-          echo "$RESULT"
           echo "RESULT_CONTENT<<EOF" >> $GITHUB_ENV
           echo "$RESULT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-  
+
       - name: Send notification to Slack
         uses: slackapi/slack-github-action@v2.0.0
         with:

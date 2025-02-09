@@ -12,7 +12,7 @@ response = requests.get(url, headers=headers)
 soup = BeautifulSoup(response.text, "html.parser")
 
 title = soup.title.text
-print(f"タイトル: {title}")
+print(f"タイトル: {title}\n")
 
 target_div = soup.find("div", id="bhs_side_renews")
 
@@ -31,11 +31,11 @@ if target_div:
                 span_elements = a_element.find_all("span")
 
                 span_texts = [span.text.strip() for span in span_elements if span.text.strip()]
-                span_texts_str = "\\n".join(span_texts) if span_texts else "No title"
+                span_texts_str = ", ".join(span_texts) if span_texts else "No title"
 
-                results.append(f"- {span_texts_str}\n {href}")
+                results.append(f"- {span_texts_str}\n  {href}")
 
 else:
     results.append("指定の <div> タグが見つかりませんでした。")
 
-print(results)
+print("\n".join(results))
