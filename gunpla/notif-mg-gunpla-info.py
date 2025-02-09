@@ -22,18 +22,18 @@ if target_div:
     ul_elements = target_div.find_all("ul")
 
     for ul in ul_elements:
-        # aタグとspanタグをそれぞれ取得
-        a_elements = ul.find_all("a")
-        span_elements = ul.find_all("span")
+        li_elements = ul.find_all("li")
 
-        # aタグからhref属性（URL）を抽出
-        for a in a_elements:
-            href = a.get("href")
-            if href:
-                results.append(href)
-        for span in span_elements:
-            results.append(span.text.strip())
+        for li in li_elements:
+            a_element = li.find("a")
+            if a_element:
+                href = a_element.get("href")
+                span_elements = a_element.find_all("span")
 
+                span_texts = [span.text.strip() for span in span_elements if span.text.strip()]
+                span_texts_str = "\\n".join(span_texts) if span_texts else "No title"
+
+                results.append(f"{span_texts_str}: {href}")
 
 else:
     results.append("指定の <div> タグが見つかりませんでした。")
