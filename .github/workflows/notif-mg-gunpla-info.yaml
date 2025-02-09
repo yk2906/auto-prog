@@ -40,14 +40,9 @@ jobs:
           webhook: ${{ secrets.GUNPLA_SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
           payload: |
-            {
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "スクレイピングが完了しました。\n結果:\n${{ env.RESULT_CONTENT }}"
-                  }
-                }
-              ]
-            }
+            text: "スクレイピングが完了しました。\n結果:\n${{ env.RESULT_CONTENT }}"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "スクレイピングが完了しました。\n結果:\n${{ env.RESULT_CONTENT }}"
