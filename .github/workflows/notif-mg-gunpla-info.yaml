@@ -41,5 +41,13 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "スクレイピングが完了しました。\n結果:\n${{ env.RESULT_CONTENT }}"
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "スクレイピングが完了しました。\n結果:\n${{ env.RESULT_CONTENT }}"
+                  }
+                }
+              ]
             }
