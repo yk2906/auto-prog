@@ -34,6 +34,7 @@ if target_div:
                 span_texts_str = ", ".join(span_texts) if span_texts else "No title"
 
                 results.append(f"- {span_texts_str}\n  {href}")
+                results.append("")
 
 else:
     results.append("指定の <div> タグが見つかりませんでした。")
