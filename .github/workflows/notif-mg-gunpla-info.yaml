@@ -31,7 +31,7 @@ jobs:
         run: |
           RESULT=$(python ${{ env.WORKING_DIR }}/gunpla/notif-mg-gunpla-info.py)
           echo "RESULT_CONTENT<<EOF" >> $GITHUB_ENV
-          echo "$RESULT" >> $GITHUB_ENV
+          echo "$RESULT" | sed ':a;N;$!ba;s/\n/\\n/g' >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Send notification to Slack
