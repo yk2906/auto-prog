@@ -11,11 +11,13 @@ creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
 # Google Drive APIクライアントの作成
 drive_service = build('drive', 'v3', credentials=creds)
 
+def generate_new_file_name():
+    current_month = datetime.datetime.now().strftime("%-m月")  # "2月" の形式
+    return f"状況報告書_{current_month}"
+
 def copy_google_document(file_id, destination_folder_id=None):
     try:
-        # コピーの新しい名前を設定 (例: "aaa_2月")
-        current_month = datetime.datetime.now().strftime("%-m月")  # "2月" の形式
-        new_file_name = f"状況報告書_{current_month}"
+        new_file_name = generate_new_file_name()
 
         # Google Drive API を使用してファイルをコピー
         copy_metadata = {"name": new_file_name}
@@ -32,7 +34,7 @@ def copy_google_document(file_id, destination_folder_id=None):
         print(f"ファイル ID: {copied_file['id']}")
 
     except HttpError as error:
-        print(f"エラーが発生しました: {error}")
+        print(f"エラーが発生しました: {error.resp.status} - {error.error_details}")
 
 # メイン処理
 source_file_id = "1RmSdsKFvRwQnYHOmUeURSa_il9zUWopog1Kt_4dotp4"  # コピー元のGoogleドキュメントID
