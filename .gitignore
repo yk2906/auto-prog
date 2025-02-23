@@ -1,4 +1,5 @@
 !google_spreadsheet/
 !google_spreadsheet/**
+test/**
 
 */*.json
