@@ -1,13 +1,14 @@
 name: Copy Google Spreadsheet Report
 
-# on:
-#   push:
-#     branches:
-#       - master
-
 on:
   schedule:
     - cron: '0 0 2 * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: '手動実行の理由'
+        required: false
+        default: '手動実行'
 
 env:
   WORKING_DIR: ${{ github.workspace }}
