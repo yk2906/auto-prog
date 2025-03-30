@@ -139,7 +139,7 @@ def copy_latest_sheet_and_clear_cells(spreadsheet_id, cells_to_clear, calendar_i
         print(f"予期しないエラーが発生しました: {e}")
 
 # メイン処理
-spreadsheet_id = "1eWYp8SIlrZl_ijXeLCVJEmPPmcdsQgeiURstcIcSbdg"
+spreadsheet_id = "1utF5pv67W4VOjXlFYx5m5QsDK1i0RFRtSMCuv1bRTOw"
 calendar_id = "yk050696@gmail.com"  # 取得したいカレンダーのID
 column_to_clear = 39
 cells_to_clear = [(22, column_to_clear), (31, column_to_clear), (40, column_to_clear), (50, column_to_clear), (60, column_to_clear)]  # 空白にするセルのリスト（(行, 列)形式で指定、1始まり）
