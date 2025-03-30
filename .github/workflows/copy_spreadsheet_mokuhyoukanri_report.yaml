@@ -13,7 +13,7 @@ env:
   WORKING_DIR: ${{ github.workspace }}
 
 jobs:
-  copy_spreadsheet_report:
+  copy_spreadsheet_mokuhyoukanri_report:
     runs-on: ubuntu-latest
 
     steps:
