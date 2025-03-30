@@ -33,8 +33,8 @@ jobs:
           pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
 
       - name: Configure Google credentials
-        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > ${{ env.WORKING_DIR }}/google_auto/google_document/credentials.json
+        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > ${{ env.WORKING_DIR }}/google_document/credentials.json
 
       - name: Copy spreadsheet report
         run: python copy_spreadsheet_report.py
-        working-directory: ${{ env.WORKING_DIR }}/google_auto/google_spreadsheet
+        working-directory: ${{ env.WORKING_DIR }}/google_spreadsheet
