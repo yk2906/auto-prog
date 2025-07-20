@@ -54,3 +54,27 @@ def get_latest_file_in_folder(drive_service, folder_id, mime_type=None):
     except HttpError as error:
         logging.error(f"フォルダ内のファイル検索中にエラーが発生しました: {error}")
         return None
+
+def get_files_in_folder(drive_service, folder_id, mime_type=None):
+    """指定されたフォルダ内のファイルをすべて取得します。"""
+    try:
+        query = f"'{folder_id}' in parents and trashed = false"
+        if mime_type:
+            query += f" and mimeType='{mime_type}'"
+            
+        results = drive_service.files().list(
+            q=query,
+            fields='files(id, name, mimeType)' # mimeTypeも取得
+        ).execute()
+        
+        items = results.get('files', [])
+        if not items:
+            logging.warning(f"フォルダID {folder_id} 内にファイルが見つかりませんでした。")
+            return []
+        
+        logging.info(f"フォルダID {folder_id} 内に {len(items)} 個のファイルが見つかりました。")
+        return items
+        
+    except HttpError as error:
+        logging.error(f"フォルダ内のファイル検索中にエラーが発生しました: {error}")
+        return []
