@@ -28,6 +28,5 @@ jobs:
         run: sed -i "s|REPLACE_WITH_YOUR_DOCUMENT_SOURCE_FOLDER_ID|${{ secrets.DOCUMENT_SOURCE_FOLDER_ID }}|g" ${{ github.workspace }}/google_auto/config.json
 
       - name: execute to copy Google Document
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-        run: python google_auto/document/refactored_copy_document_report.py
+        run: python document/refactored_copy_document_report.py
+        working-directory: ${{ github.workspace }}/google_auto

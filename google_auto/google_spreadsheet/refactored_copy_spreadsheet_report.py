@@ -2,8 +2,11 @@ import datetime
 import logging
 import json
 import re
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from googleapiclient.errors import HttpError
-from .. import get_sheets_service, get_drive_service, get_latest_file_in_folder
+from google_api_client import get_sheets_service, get_drive_service, get_latest_file_in_folder
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

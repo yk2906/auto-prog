@@ -36,6 +36,5 @@ jobs:
         run: sed -i "s|REPLACE_WITH_YOUR_DAILY_REPORT_SOURCE_FOLDER_ID|${{ secrets.DAILY_REPORT_SOURCE_FOLDER_ID }}|g" ${{ github.workspace }}/google_auto/config.json
 
       - name: Copy spreadsheet report
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-        run: python google_auto/google_spreadsheet/refactored_copy_spreadsheet_report.py
+        run: python spreadsheet/refactored_copy_spreadsheet_report.py
+        working-directory: ${{ github.workspace }}/google_auto
