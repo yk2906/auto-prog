@@ -3,7 +3,7 @@ import logging
 import json
 import re
 from googleapiclient.errors import HttpError
-from google_api_client import get_sheets_service, get_drive_service, get_latest_file_in_folder
+from .. import get_sheets_service, get_drive_service, get_latest_file_in_folder
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
