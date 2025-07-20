@@ -36,5 +36,5 @@ jobs:
         run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > ${{ env.WORKING_DIR }}/google_auto/google_spreadsheet/credentials.json
 
       - name: Copy spreadsheet report
-        run: python copy_spreadsheet_report.py
+        run: python refactored_copy_spreadsheet_report.py
         working-directory: ${{ env.WORKING_DIR }}/google_auto/google_spreadsheet
