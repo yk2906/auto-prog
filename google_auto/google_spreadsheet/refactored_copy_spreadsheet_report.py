@@ -6,7 +6,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from googleapiclient.errors import HttpError
-from google_api_client import get_sheets_service, get_drive_service, get_latest_file_in_folder
+from google_api_client import get_sheets_service, get_drive_service, get_files_in_folder
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -131,23 +131,24 @@ def main():
         sheets_service = get_sheets_service(credentials_file)
         
         mime_type = 'application/vnd.google-apps.spreadsheet'
-        spreadsheets = get_latest_file_in_folder(drive_service, source_folder_id, mime_type)
+        spreadsheets = get_files_in_folder(drive_service, source_folder_id, mime_type)
         if not spreadsheets:
             logging.info("対象フォルダにスプレッドシートが見つかりませんでした。")
             return
 
-        spreadsheet_id = spreadsheets['id']
-        logging.info(f"処理中のスプレッドシート: {spreadsheets['name']} (ID: {spreadsheet_id})")
-        
-        latest_sheet = get_latest_sheet(sheets_service, spreadsheet_id)
-        if not latest_sheet:
-            return
+        for spreadsheet_item in spreadsheets:
+            spreadsheet_id = spreadsheet_item['id']
+            logging.info(f"処理中のスプレッドシート: {spreadsheet_item['name']} (ID: {spreadsheet_id})")
+            
+            latest_sheet = get_latest_sheet(sheets_service, spreadsheet_id)
+            if not latest_sheet:
+                continue
 
-        new_sheet_title = generate_new_sheet_title(latest_sheet['properties']['title'])
-        new_sheet_id = duplicate_sheet(sheets_service, spreadsheet_id, latest_sheet['properties']['sheetId'], new_sheet_title)
+            new_sheet_title = generate_new_sheet_title(latest_sheet['properties']['title'])
+            new_sheet_id = duplicate_sheet(sheets_service, spreadsheet_id, latest_sheet['properties']['sheetId'], new_sheet_title)
 
-        if new_sheet_id:
-            clear_and_update_cells(sheets_service, spreadsheet_id, new_sheet_id, cells_to_clear, date_cell)
+            if new_sheet_id:
+                clear_and_update_cells(sheets_service, spreadsheet_id, new_sheet_id, cells_to_clear, date_cell)
 
     except Exception as e:
         logging.error(f"予期しないエラーが発生しました: {e}")
