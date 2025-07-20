@@ -1,0 +1,36 @@
+{
+  "credentials_file": "credentials.json",
+  "document_report": {
+    "source_folder_id": "REPLACE_WITH_YOUR_DOCUMENT_SOURCE_FOLDER_ID",
+    "destination_folder_id": "12gKaJbxAjtSkCatQF0sm6vl2GLC-fvVP"
+  },
+  "goal_management_report": {
+    "source_folder_id": "12gyDaNA_PW5OHhMhvB4_FHnNDP25jGYQ",
+    "calendar_id": "yk050696@gmail.com",
+    "cells_to_clear": [
+      [22, 39],
+      [31, 39],
+      [40, 39],
+      [50, 39],
+      [60, 39]
+    ],
+    "date_cell": {
+      "row": 8,
+      "column": 5
+    }
+  },
+  "daily_report": {
+    "source_folder_id": "11IVtllpoBz8Oih_LaOVkfpali0MLUND7",
+    "cells_to_clear": [
+      [8, 5],
+      [9, 4],
+      [15, 2],
+      [22, 2],
+      [28, 2]
+    ],
+    "date_cell": {
+      "row": 8,
+      "column": 5
+    }
+  }
+}
