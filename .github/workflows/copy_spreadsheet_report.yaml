@@ -10,9 +10,6 @@ on:
         required: false
         default: '手動実行'
 
-env:
-  WORKING_DIR: ${{ github.workspace }}/google_auto
-
 jobs:
   copy_spreadsheet_report:
     runs-on: ubuntu-latest
@@ -33,11 +30,11 @@ jobs:
           pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
 
       - name: Configure Google credentials
-        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > ${{ env.WORKING_DIR }}/credentials.json
+        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > ${{ github.workspace }}/google_auto/credentials.json
 
       - name: Configure source folder ID
-        run: sed -i "s|REPLACE_WITH_YOUR_DAILY_REPORT_SOURCE_FOLDER_ID|${{ secrets.DAILY_REPORT_SOURCE_FOLDER_ID }}|g" ${{ env.WORKING_DIR }}/config.json
+        run: sed -i "s|REPLACE_WITH_YOUR_DAILY_REPORT_SOURCE_FOLDER_ID|${{ secrets.DAILY_REPORT_SOURCE_FOLDER_ID }}|g" ${{ github.workspace }}/google_auto/config.json
 
       - name: Copy spreadsheet report
-        run: python google_spreadsheet/refactored_copy_spreadsheet_report.py
-        working-directory: ${{ env.WORKING_DIR }}/..
+        run: python spreadsheet/refactored_copy_spreadsheet_report.py
+        working-directory: ${{ github.workspace }}/google_auto
