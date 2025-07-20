@@ -12,7 +12,7 @@ on:
     - cron: '0 0 3 * *'
 
 env:
-  WORKING_DIR: ${{ github.workspace }}
+  WORKING_DIR: ${{ github.workspace }}/google_auto
 
 jobs:
   copy_spreadsheet_mokuhyoukanri_report:
@@ -34,8 +34,11 @@ jobs:
           pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
 
       - name: Configure Google credentials
-        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > ${{ env.WORKING_DIR }}/google_auto/google_spreadsheet/credentials.json
+        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > ${{ env.WORKING_DIR }}/credentials.json
+
+      - name: Configure source folder ID
+        run: sed -i "s|REPLACE_WITH_YOUR_GOAL_SHEET_SOURCE_FOLDER_ID|${{ secrets.GOAL_SHEET_SOURCE_FOLDER_ID }}|g" ${{ env.WORKING_DIR }}/config.json
 
       - name: Copy spreadsheet report
-        run: python refactored_copy_spreadsheet_mokuhyoukanri_report.py
-        working-directory: ${{ env.WORKING_DIR }}/google_auto/google_spreadsheet
+        run: python google_spreadsheet/refactored_copy_spreadsheet_mokuhyoukanri_report.py
+        working-directory: ${{ env.WORKING_DIR }}/..
