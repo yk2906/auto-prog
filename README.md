@@ -9,12 +9,19 @@ Google Workspace（Drive、Sheets、Calendar）の自動化とWebスクレイピ
 ```
 auto-prog/
 ├── google_auto/              # Google Workspace自動化
-│   ├── google_api_client.py  # Google API共通クライアント
-│   ├── config.json           # 設定ファイル
-│   ├── google_document/      # Googleドキュメント関連
+│   ├── google_api_client.py  # Google API共通クライアント（Python用）
+│   ├── config.json           # 設定ファイル（Python用）
+│   ├── gas/                  # GAS版スクリプト
+│   │   ├── Code.gs
+│   │   ├── CopyDocumentReport.gs
+│   │   ├── CopySpreadsheetReport.gs
+│   │   ├── CopyMokuhyoukanriReport.gs
+│   │   ├── Setup.gs
+│   │   └── README.md
+│   ├── google_document/      # Googleドキュメント関連（Python用）
 │   │   ├── copy_document_report.py
 │   │   └── refactored_copy_document_report.py
-│   └── google_spreadsheet/   # Googleスプレッドシート関連
+│   └── google_spreadsheet/   # Googleスプレッドシート関連（Python用）
 │       ├── copy_spreadsheet_report.py
 │       ├── copy_spreadsheet_mokuhyoukanri_report.py
 │       ├── refactored_copy_spreadsheet_report.py
@@ -107,6 +114,33 @@ uv run python refactored_copy_spreadsheet_mokuhyoukanri_report.py
 cd gunpla
 uv run python notif-mg-gunpla-info.py
 ```
+
+## GAS版の使用方法
+
+GAS版は認証不要で、定期実行の設定も簡単です。詳細は `google_auto/gas/README.md` を参照してください。
+
+### セットアップ
+
+1. GASプロジェクトを作成
+   ```bash
+   cd google_auto/gas
+   clasp create --type standalone --title "auto-prog-gas"
+   ```
+
+2. コードをプッシュ
+   ```bash
+   clasp push
+   ```
+
+3. 設定を反映
+   - GASエディタで`Setup.gs`の`setupConfig()`関数を実行
+   - `DOC_SOURCE_FOLDER_ID`を実際のフォルダIDに変更
+
+4. 動作確認
+   - GASエディタで各関数を手動実行して確認
+
+5. トリガー設定（任意）
+   - GASエディタで`Setup.gs`の`setupTriggers()`関数を実行
 
 ## 依存関係
 

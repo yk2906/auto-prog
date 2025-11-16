@@ -6,3 +6,6 @@ test/**
 # uv
 uv.lock
 .venv/
+
+# GAS
+google_auto/gas/.clasp.json
