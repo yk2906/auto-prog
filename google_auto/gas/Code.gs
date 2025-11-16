@@ -48,19 +48,31 @@ function getLatestFileInFolder(folderId, mimeType) {
  * フォルダ内のすべてのファイルを取得
  */
 function getFilesInFolder(folderId, mimeType) {
-  const folder = DriveApp.getFolderById(folderId);
-  const files = folder.getFilesByType(mimeType);
-  const fileList = [];
+  log('getFilesInFolder 開始: folderId=' + folderId + ', mimeType=' + mimeType);
   
-  while (files.hasNext()) {
-    const file = files.next();
-    fileList.push({
-      id: file.getId(),
-      name: file.getName()
-    });
+  try {
+    const folder = DriveApp.getFolderById(folderId);
+    log('フォルダを取得しました: ' + folder.getName());
+    
+    const files = folder.getFilesByType(mimeType);
+    const fileList = [];
+    
+    while (files.hasNext()) {
+      const file = files.next();
+      fileList.push({
+        id: file.getId(),
+        name: file.getName()
+      });
+      log('ファイルを発見: ' + file.getName() + ' (ID: ' + file.getId() + ')');
+    }
+    
+    log('合計 ' + fileList.length + ' 個のファイルを取得しました');
+    return fileList;
+  } catch (error) {
+    log('getFilesInFolder エラー: ' + error.toString());
+    log('エラースタック: ' + (error.stack || 'スタック情報なし'));
+    return [];
   }
-  
-  return fileList;
 }
 
 /**
