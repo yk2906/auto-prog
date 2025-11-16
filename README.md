@@ -22,8 +22,8 @@ auto-prog/
 ├── gunpla/                   # Webスクレイピング
 │   └── notif-mg-gunpla-info.py
 ├── test/                     # テスト・練習用
-├── pyproject.toml            # Poetry設定
-└── poetry.lock               # 依存関係ロックファイル
+├── pyproject.toml            # プロジェクト設定
+└── uv.lock                   # 依存関係ロックファイル
 ```
 
 ## 機能
@@ -59,13 +59,13 @@ auto-prog/
 ### 前提条件
 
 - Python 3.10以上
-- Poetry
+- [uv](https://github.com/astral-sh/uv) (インストール方法: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
 ### インストール
 
 ```bash
 # 依存関係のインストール
-poetry install
+uv sync
 ```
 
 ### 設定
@@ -84,28 +84,28 @@ poetry install
 
 ```bash
 cd google_auto/google_document
-poetry run python refactored_copy_document_report.py
+uv run python refactored_copy_document_report.py
 ```
 
 ### 日次レポートの自動生成
 
 ```bash
 cd google_auto/google_spreadsheet
-poetry run python refactored_copy_spreadsheet_report.py
+uv run python refactored_copy_spreadsheet_report.py
 ```
 
 ### 目標管理レポートの自動生成
 
 ```bash
 cd google_auto/google_spreadsheet
-poetry run python refactored_copy_spreadsheet_mokuhyoukanri_report.py
+uv run python refactored_copy_spreadsheet_mokuhyoukanri_report.py
 ```
 
 ### ガンプラ情報取得
 
 ```bash
 cd gunpla
-poetry run python notif-mg-gunpla-info.py
+uv run python notif-mg-gunpla-info.py
 ```
 
 ## 依存関係

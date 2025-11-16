@@ -2,3 +2,7 @@ test/**
 
 */*.json
 !/google_auto/config.json
+
+# uv
+uv.lock
+.venv/
