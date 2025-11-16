@@ -9,3 +9,5 @@ uv.lock
 
 # GAS
 google_auto/gas/.clasp.json
+.clasp.json
+appsscript.json
