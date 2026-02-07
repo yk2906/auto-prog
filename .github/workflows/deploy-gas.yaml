@@ -55,4 +55,4 @@ jobs:
           echo '{"timeZone":"Asia/Tokyo","dependencies":{},"exceptionLogging":"STACKDRIVER","runtimeVersion":"V8"}' > appsscript.json
 
       - name: Push to Google Apps Script
-        run: clasp push
+        run: clasp push --force
