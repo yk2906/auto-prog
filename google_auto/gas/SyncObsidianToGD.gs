@@ -1,7 +1,7 @@
 function syncMarkdownToCell() {
     // --- 設定エリア ---
     const fileId = '1WmsKFPG5PVP42fY_H0qhPj9sKsQSSZOLkh5GxlZlcTo'; 
-    const sheetName = '②02月07日'; // 反映させたいシート名
+    // const sheetName = '②02月07日'; // 反映させたいシート名
     const cellAddress = 'D9';   // 反映させたいセル
     // ----------------
   
@@ -9,9 +9,10 @@ function syncMarkdownToCell() {
       // Googleドライブからファイルを取得
       const file = DriveApp.getFileById(fileId);
       const content = file.getBlob().getDataAsString();
+
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   
       // スプレッドシートの指定セルに書き込み
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
       sheet.getRange(cellAddress).setValue(content);
   
       console.log('同期が完了しました！');
