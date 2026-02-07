@@ -1,0 +1,46 @@
+name: Deploy GAS (clasp push)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'google_auto/gas/**'
+  workflow_dispatch:
+
+jobs:
+  deploy-gas:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: google_auto/gas
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install clasp
+        run: npm install -g @google/clasp
+
+      - name: Configure clasp credentials
+        run: |
+          mkdir -p ~/.config
+          echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+
+      - name: Create .clasp.json
+        run: |
+          echo '{ "scriptId": "${{ secrets.GAS_SCRIPT_ID }}", "rootDir": "." }' > .clasp.json
+
+      - name: Create appsscript.json
+        run: |
+          echo '{"timeZone":"Asia/Tokyo","dependencies":{},"exceptionLogging":"STACKDRIVER","runtimeVersion":"V8"}' > appsscript.json
+
+      - name: Push to Google Apps Script
+        run: clasp push
