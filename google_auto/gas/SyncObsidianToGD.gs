@@ -1,7 +1,7 @@
 function syncMarkdownToCell() {
     // --- 設定エリア ---
     const fileId = '1WmsKFPG5PVP42fY_H0qhPj9sKsQSSZOLkh5GxlZlcTo'; 
-    const sheetName = '② 02月07日'; // 反映させたいシート名
+    const sheetName = '②02月07日'; // 反映させたいシート名
     const cellAddress = 'D9';   // 反映させたいセル
     // ----------------
   
