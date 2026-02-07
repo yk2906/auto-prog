@@ -57,6 +57,33 @@ GASエディタで以下の手順を実行：
 
 実行ログはGASエディタの「実行」タブで確認できます。
 
+## CI/CD（GitHub Actions）
+
+`google_auto/gas/` 配下のファイルを変更して GitHub に push すると、自動で `clasp push` が実行され、GAS プロジェクトに反映されます。
+
+### 必要な GitHub Secrets
+
+リポジトリの **Settings → Secrets and variables → Actions** で以下を登録してください。
+
+| Secret 名 | 内容 |
+|-----------|------|
+| `CLASPRC_JSON` | ローカルで `clasp login` 実行後、`~/.clasprc.json` の内容をそのまま貼り付け |
+| `GAS_SCRIPT_ID` | `.clasp.json` の `scriptId` の値（GAS プロジェクト ID） |
+
+### CLASPRC_JSON の取得方法
+
+```bash
+clasp login
+cat ~/.clasprc.json
+```
+
+表示された JSON 全体をコピーして Secret に登録します。トークンには有効期限があるため、CI で認証エラーになった場合は再度 `clasp login` して Secret を更新してください。
+
+### トリガー
+
+- **push**: `main` または `master` ブランチへ push し、かつ `google_auto/gas/**` に変更があったとき
+- **手動**: Actions タブから「Deploy GAS (clasp push)」の「Run workflow」で実行可能
+
 ## 注意事項
 
 - `.clasp.json`は`.gitignore`に追加されているため、Gitにはコミットされません
