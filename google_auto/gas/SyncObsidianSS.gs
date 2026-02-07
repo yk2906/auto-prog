@@ -47,17 +47,26 @@ function syncMarkdownToCell() {
       let currentTarget = null;
   
       for (let i = 0; i < lines.length; i++) {
-        let line = lines[i].trim();
-        if (line.startsWith('#')) {
-          if (syncMap[line]) {
-            currentTarget = line;
+        let line = lines[i]; // .trim() を外して元の空白を保持する
+        let trimmedLine = line.trim(); // 判定用に、空白を除去した変数も用意
+  
+        // 行が見出し（#）で始まるかチェック
+        if (trimmedLine.startsWith('#')) {
+          if (syncMap[trimmedLine]) {
+            currentTarget = trimmedLine;
           } else {
             currentTarget = null;
           }
           continue;
         }
-        if (currentTarget && (line.startsWith('-') || line.startsWith('*') || line.match(/^\d+\./))) {
-          results[currentTarget].push(line);
+  
+        // 抽出対象の見出し配下にいる場合
+        if (currentTarget) {
+          // 空白を除去した状態でリスト記号から始まっているか判定
+          if (trimmedLine.startsWith('-') || trimmedLine.startsWith('*') || trimmedLine.match(/^\d+\./)) {
+            // 保存するのは「元の空白（インデント）が残っている line」
+            results[currentTarget].push(line); 
+          }
         }
       }
   
