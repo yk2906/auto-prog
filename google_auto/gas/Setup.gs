@@ -10,7 +10,7 @@ function setupConfig() {
   properties.setProperty('DOC_DEST_FOLDER_ID', '12gKaJbxAjtSkCatQF0sm6vl2GLC-fvVP');
   
   // 日次レポート設定
-  properties.setProperty('DAILY_SOURCE_FOLDER_ID', '1fkouegK9E7AlonDmaqQSaZCCnjJe1eBB');
+  properties.setProperty('DAILY_SOURCE_FOLDER_ID', 'a');
   properties.setProperty('DAILY_CELLS_TO_CLEAR', JSON.stringify([[8, 5], [9, 4], [15, 2], [22, 2], [28, 2]]));
   properties.setProperty('DAILY_DATE_CELL', JSON.stringify({row: 8, column: 5}));
   
