@@ -84,6 +84,17 @@ cat ~/.clasprc.json
 - **push**: `main` または `master` ブランチへ push し、かつ `google_auto/gas/**` に変更があったとき
 - **手動**: Actions タブから「Deploy GAS (clasp push)」の「Run workflow」で実行可能
 
+### 「Insufficient Permission」が出る場合
+
+1. **CLASPRC_JSON のアカウントと GAS の所有者を一致させる**  
+   `clasp login` した Google アカウントが、`GAS_SCRIPT_ID` の GAS プロジェクトの**編集者**（または所有者）になっているか確認してください。別アカウントで作ったプロジェクトには push できません。
+
+2. **CLASPRC_JSON を再取得する**  
+   `~/.clasprc.json` を開き、**改行を含む JSON 全体**をコピーして Secret に登録し直してください。1 行にまとまっていても構いませんが、`{` から `}` まで欠けずに含める必要があります。
+
+3. **GAS_SCRIPT_ID の確認**  
+   ローカルの `google_auto/gas/.clasp.json` の `scriptId` と、GitHub の `GAS_SCRIPT_ID` Secret が同じ値か確認してください。
+
 ## 注意事項
 
 - `.clasp.json`は`.gitignore`に追加されているため、Gitにはコミットされません
