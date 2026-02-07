@@ -1,4 +1,4 @@
-function syncMarkdownToCell() {
+function syncMarkdownToCellReport2() {
     // --- 設定エリア ---
     // この名前と同じ名前の「スプレッドシート」と「Markdownファイル」を探します
     const targetFileName = '【項番2】udemy受講レポート'; 
