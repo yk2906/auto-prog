@@ -35,6 +35,17 @@ jobs:
           mkdir -p ~/.config
           printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
 
+      - name: Verify credentials file
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = process.env.HOME + '/.clasprc.json';
+            const raw = fs.readFileSync(path, 'utf8');
+            if (!raw || raw.length < 10) throw new Error('Credentials file too short');
+            JSON.parse(raw);
+            console.log('Credentials file: valid JSON');
+          "
+
       - name: Create .clasp.json
         run: |
           echo '{ "scriptId": "${{ secrets.GAS_SCRIPT_ID }}", "rootDir": "." }' > .clasp.json
