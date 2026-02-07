@@ -1,11 +1,11 @@
 function syncMarkdownToCell() {
     // --- 設定エリア ---
-    const targetSpreadsheetName = '【項番2】udemy受講レポート_gas検証用'; 
-    const fileId = '1UNyH2kLjwk_96Lwtld3xOkdpzcBn9rLP'; 
+    // この名前と同じ名前の「スプレッドシート」と「Markdownファイル」を探します
+    const targetFileName = '【項番2】udemy受講レポート'; 
     
-    // 今日の日付から「3月」のような文字列を作成
+    // 今日の日付から「2月」のような文字列を作成（シート検索用）
     const today = new Date();
-    const currentMonthName = (today.getMonth() + 1) + '月'; // 実行時の月（例：3月）
+    const currentMonthName = (today.getMonth() + 1) + '月'; 
   
     const syncMap = {
       '### 内容': 'D9',
@@ -17,29 +17,47 @@ function syncMarkdownToCell() {
   
     try {
       // 1. スプレッドシートを名前で検索
-      const files = DriveApp.getFilesByName(targetSpreadsheetName);
-      if (!files.hasNext()) throw new Error('スプレッドシートが見つかりません。');
-      const ss = SpreadsheetApp.open(files.next());
+      const ssFiles = DriveApp.getFilesByName(targetFileName);
+      let ssFile = null;
+      while (ssFiles.hasNext()) {
+        let file = ssFiles.next();
+        if (file.getMimeType() === MimeType.GOOGLE_SHEETS) {
+          ssFile = file;
+          break;
+        }
+      }
+      if (!ssFile) throw new Error('スプレッドシート「' + targetFileName + '」が見つかりません。');
+      const ss = SpreadsheetApp.open(ssFile);
   
-      // 2. 「3月」を含むシートを自動で探す
+      // 2. 同じ名前の Markdownファイル（.md）を名前で検索
+      const mdFiles = DriveApp.getFilesByName(targetFileName + '.md');
+      // もし拡張子なしで保存している場合は DriveApp.getFilesByName(targetFileName)
+      let mdFile = null;
+      if (mdFiles.hasNext()) {
+        mdFile = mdFiles.next();
+      } else {
+        // 拡張子 .md が付いていない可能性も考慮して再検索
+        const mdFilesNoExt = DriveApp.getFilesByName(targetFileName);
+        if (mdFilesNoExt.hasNext()) {
+          mdFile = mdFilesNoExt.next();
+        }
+      }
+      
+      if (!mdFile) throw new Error('Markdownファイル「' + targetFileName + '.md」が見つかりません。');
+  
+      // 3. 「○月」を含むシートを自動で探す
       const allSheets = ss.getSheets();
       let targetSheet = null;
-      
       for (let i = 0; i < allSheets.length; i++) {
-        let name = allSheets[i].getName();
-        if (name.indexOf(currentMonthName) !== -1) { // 名前に「3月」が含まれていれば
+        if (allSheets[i].getName().indexOf(currentMonthName) !== -1) {
           targetSheet = allSheets[i];
           break;
         }
       }
+      if (!targetSheet) throw new Error('名前に「' + currentMonthName + '」を含むシートが見つかりません。');
   
-      if (!targetSheet) {
-        throw new Error('名前に「' + currentMonthName + '」を含むシートが見つかりません。');
-      }
-  
-      // 3. Markdownファイルの内容を取得して解析（以前と同じ）
-      const file = DriveApp.getFileById(fileId);
-      const fullText = file.getBlob().getDataAsString('UTF-8');
+      // 4. 特定したMarkdownファイルの内容を解析
+      const fullText = mdFile.getBlob().getDataAsString('UTF-8');
       const lines = fullText.split(/\r?\n/);
       
       let results = {};
@@ -70,14 +88,14 @@ function syncMarkdownToCell() {
         }
       }
   
-      // 4. 特定したシートのセルへ書き込み
+      // 5. 書き込み
       Object.keys(syncMap).forEach(heading => {
         const cell = syncMap[heading];
         const data = results[heading].join('\n');
         targetSheet.getRange(cell).setValue(data || '');
       });
   
-      console.log(targetSheet.getName() + ' への同期が完了しました。');
+      console.log('同期完了: ' + targetFileName + ' -> ' + targetSheet.getName());
   
     } catch (e) {
       console.error(e.toString());
