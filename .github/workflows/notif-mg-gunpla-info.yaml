@@ -35,7 +35,7 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
 
       - name: Send notification to Slack
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@v2.1.1
         with:
           webhook: ${{ secrets.GUNPLA_SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
