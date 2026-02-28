@@ -33,7 +33,9 @@ function generateNewSheetTitle(latestSheetTitle) {
 }
 
 /**
- * 目次シートを更新: C列(5～10行)にコピー実施日を入れ、D列・E列は1行上の内容をコピー
+ * 目次シートを更新: 範囲C5～E10、基準C5～E5。
+ * C列: C5から順に値があるか見て、最初に空いている行にコピー実施日を記載。
+ * D列・E列: 日付を入れた行が6行目以降なら、その1行上のD・Eをその行にコピー（1行分のみ）。
  */
 function updateTocSheet(spreadsheet) {
   const tocSheet = spreadsheet.getSheetByName('目次');
@@ -42,15 +44,26 @@ function updateTocSheet(spreadsheet) {
     return;
   }
   const copyDate = new Date();
-  // C列(5～10行)にコピー実施日を設定
-  tocSheet.getRange(5, 3, 10, 3).setValue(copyDate);
-  tocSheet.getRange(5, 3, 10, 3).setNumberFormat('yyyy/mm/dd');
-  // D列・E列は1行上の内容をコピー（上書きを防ぐため下の行から処理）
-  for (var row = 10; row >= 5; row--) {
-    tocSheet.getRange(row, 4).setValue(tocSheet.getRange(row - 1, 4).getValue());
-    tocSheet.getRange(row, 5).setValue(tocSheet.getRange(row - 1, 5).getValue());
+  // C5～C10のうち、最初に空いている行にコピー実施日を記載
+  var targetRow = null;
+  for (var r = 5; r <= 10; r++) {
+    var val = tocSheet.getRange(r, 3).getValue();
+    if (val === '' || val === null || (typeof val === 'string' && val.trim() === '')) {
+      targetRow = r;
+      break;
+    }
   }
-  log('目次シートを更新しました（C列: コピー日付、D・E列: 1行上をコピー）');
+  if (targetRow === null) {
+    log('目次シート: C5～C10がすべて埋まっているため日付を追記しません');
+    return;
+  }
+  tocSheet.getRange(targetRow, 3).setValue(copyDate).setNumberFormat('yyyy/mm/dd');
+  // 日付を入れた行が基準行(5行)より下なら、D・E列は1行上の内容をその行にコピー（1行のみ）
+  if (targetRow > 5) {
+    tocSheet.getRange(targetRow, 4).setValue(tocSheet.getRange(targetRow - 1, 4).getValue());
+    tocSheet.getRange(targetRow, 5).setValue(tocSheet.getRange(targetRow - 1, 5).getValue());
+  }
+  log('目次シートを更新しました（C' + targetRow + 'にコピー日付、D・Eは1行上をコピー）');
 }
 
 /**
