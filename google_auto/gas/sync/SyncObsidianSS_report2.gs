@@ -1,17 +1,17 @@
 function syncMarkdownToCellReport2() {
     // --- 設定エリア ---
     // この名前と同じ名前の「スプレッドシート」と「Markdownファイル」を探します
-    const targetFileName = '【項番2】udemy受講レポート'; 
+    const targetFileName = '【項番2】Udemy受講レポート'; 
     
     // 今日の日付から「2月」のような文字列を作成（シート検索用）
     const today = new Date();
     const currentMonthName = (today.getMonth() + 1) + '月'; 
   
     const syncMap = {
-      '### 内容': 'D9',
-      '### 学んだこと': 'B15',
-      '### 今後の活用': 'B22',
-      '### 活用実践の成果': 'B28',
+      '### 内容': 'D12',
+      '### 学んだこと': 'B18',
+      '### 今後の活用': 'B25',
+      '### 活用実践の成果': 'B31',
     };
     // ----------------
   
