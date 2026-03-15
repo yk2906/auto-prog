@@ -13,8 +13,8 @@ function syncMarkdownToCellReport2() {
       '### 今後の活用': 'B25',
       '### 活用実践の成果': 'B31',
     };
-    // 一番浅いインデントのリスト行だけを同期するセル
-    const shallowCell = 'E9';
+    // 1番目・2番目・3番目…の見出しの「一番浅いインデント」だけを同期するセル（順にE9,E10,E11,E12）
+    const shallowCells = ['E9', 'E10', 'E11', 'E12'];
     // ----------------
   
     try {
@@ -67,19 +67,19 @@ function syncMarkdownToCellReport2() {
         const m = l.match(/^(\s*)([-*]|\d+\.)/);
         return m ? m[1].length : -1;
       }
-      // 見出しセクションを確定: syncMap用は全行、shallow用は一番浅い行だけ
+      // 見出しセクションを確定: syncMap用は全行、shallow用はセクションごとに一番浅い行だけ
       function flushSection(target, items, res, shallowOut) {
         if (!target || items.length === 0) return;
         const allLines = items.map(x => x.line);
         res[target] = (res[target] || []).concat(allLines);
         const minIndent = Math.min.apply(null, items.map(x => x.indent));
         const shallow = items.filter(x => x.indent === minIndent).map(x => x.line);
-        shallowOut.push.apply(shallowOut, shallow);
+        shallowOut.push(shallow); // セクションごとに配列を1要素として追加
       }
       
       let results = {};
       Object.keys(syncMap).forEach(key => results[key] = []);
-      let shallowForE9 = []; // 一番浅いインデントの行だけ（全セクション分）
+      let shallowResults = []; // セクション順の「一番浅い行」の配列の配列
       let currentTarget = null;
       let sectionListItems = []; // { indent, line } の配列（現在見出し配下のリスト）
   
@@ -89,7 +89,7 @@ function syncMarkdownToCellReport2() {
   
         // 行が見出し（#）で始まるかチェック
         if (trimmedLine.startsWith('#')) {
-          flushSection(currentTarget, sectionListItems, results, shallowForE9);
+          flushSection(currentTarget, sectionListItems, results, shallowResults);
           sectionListItems = [];
           if (syncMap[trimmedLine]) {
             currentTarget = trimmedLine;
@@ -107,15 +107,17 @@ function syncMarkdownToCellReport2() {
           }
         }
       }
-      flushSection(currentTarget, sectionListItems, results, shallowForE9);
+      flushSection(currentTarget, sectionListItems, results, shallowResults);
   
-      // 5. 書き込み（syncMap: 全インデントそのまま / shallowCell: 一番浅い行だけ）
+      // 5. 書き込み（syncMap: 全インデントそのまま / shallowCells: 1番目→E9, 2番目→E10…）
       Object.keys(syncMap).forEach(heading => {
         const cell = syncMap[heading];
         const data = results[heading].join('\n');
         targetSheet.getRange(cell).setValue(data || '');
       });
-      targetSheet.getRange(shallowCell).setValue(shallowForE9.join('\n') || '');
+      for (let i = 0; i < shallowResults.length && i < shallowCells.length; i++) {
+        targetSheet.getRange(shallowCells[i]).setValue(shallowResults[i].join('\n') || '');
+      }
   
       console.log('同期完了: ' + targetFileName + ' -> ' + targetSheet.getName());
   
