@@ -133,10 +133,24 @@ function copySpreadsheetReport() {
         newSheet.setName(newSheetTitle);
         log('シートを複製しました: ' + newSheetTitle);
         
-        // セルをクリア
-        if (reportConfig.cells_to_clear && reportConfig.cells_to_clear.length > 0) {
-          log('クリアするセル数: ' + reportConfig.cells_to_clear.length);
-          clearCells(newSheet, reportConfig.cells_to_clear);
+        // セルをクリア（完全一致 → 名前を含む → 共通の順で適用）
+        var cellsToClear = reportConfig.cells_to_clear;
+        if (reportConfig.cells_to_clear_by_name && reportConfig.cells_to_clear_by_name[spreadsheetItem.name]) {
+          cellsToClear = reportConfig.cells_to_clear_by_name[spreadsheetItem.name];
+          log('スプレッドシート名「' + spreadsheetItem.name + '」用のクリア設定を使用（完全一致）');
+        } else if (reportConfig.cells_to_clear_by_name_contains) {
+          var name = spreadsheetItem.name;
+          for (var phrase in reportConfig.cells_to_clear_by_name_contains) {
+            if (name.indexOf(phrase) !== -1) {
+              cellsToClear = reportConfig.cells_to_clear_by_name_contains[phrase];
+              log('スプレッドシート名「' + name + '」は「' + phrase + '」を含むため、専用のクリア設定を使用');
+              break;
+            }
+          }
+        }
+        if (cellsToClear && cellsToClear.length > 0) {
+          log('クリアするセル数: ' + cellsToClear.length);
+          clearCells(newSheet, cellsToClear);
           log('セルをクリアしました');
         } else {
           log('クリアするセルが設定されていません');

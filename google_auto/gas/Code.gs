@@ -11,6 +11,8 @@ function getConfig() {
     daily_report: {
       source_folder_id: properties.getProperty('DAILY_SOURCE_FOLDER_ID'),
       cells_to_clear: JSON.parse(properties.getProperty('DAILY_CELLS_TO_CLEAR') || '[]'),
+      cells_to_clear_by_name: JSON.parse(properties.getProperty('DAILY_CELLS_TO_CLEAR_BY_NAME') || '{}'),
+      cells_to_clear_by_name_contains: JSON.parse(properties.getProperty('DAILY_CELLS_TO_CLEAR_BY_NAME_CONTAINS') || '{}'),
       date_cell: JSON.parse(properties.getProperty('DAILY_DATE_CELL') || '{}')
     },
     goal_management_report: {
