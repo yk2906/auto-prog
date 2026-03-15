@@ -67,19 +67,19 @@ function syncMarkdownToCellReport3() {
         const m = l.match(/^(\s*)([-*]|\d+\.)/);
         return m ? m[1].length : -1;
       }
-      // 見出しセクションを確定: syncMap用は全行、shallow用はセクションごとに一番浅い行だけ
+      // 見出しセクションを確定: syncMap用は全行、shallow用は一番浅い行を1行ずつ順にE9,E10,E11,E12へ
       function flushSection(target, items, res, shallowOut) {
         if (!target || items.length === 0) return;
         const allLines = items.map(x => x.line);
         res[target] = (res[target] || []).concat(allLines);
         const minIndent = Math.min.apply(null, items.map(x => x.indent));
         const shallow = items.filter(x => x.indent === minIndent).map(x => x.line);
-        shallowOut.push(shallow); // セクションごとに配列を1要素として追加
+        shallow.forEach(function(line) { shallowOut.push([line]); }); // 1行ずつ別セルに振り分け
       }
       
       let results = {};
       Object.keys(syncMap).forEach(key => results[key] = []);
-      let shallowResults = []; // セクション順の「一番浅い行」の配列の配列
+      let shallowResults = []; // 一番浅い行を1行ずつ並べた配列の配列（1番目→E9, 2番目→E10…）
       let currentTarget = null;
       let sectionListItems = []; // { indent, line } の配列（現在見出し配下のリスト）
   
@@ -109,7 +109,7 @@ function syncMarkdownToCellReport3() {
       }
       flushSection(currentTarget, sectionListItems, results, shallowResults);
   
-      // 5. 書き込み（syncMap: 全インデントそのまま / shallowCells: 1番目→E9, 2番目→E10…）
+      // 5. 書き込み（syncMap: 全インデントそのまま / shallowCells: 1行目→E9, 2行目→E10…）
       Object.keys(syncMap).forEach(heading => {
         const cell = syncMap[heading];
         const data = results[heading].join('\n');
