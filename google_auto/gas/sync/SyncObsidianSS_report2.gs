@@ -13,6 +13,8 @@ function syncMarkdownToCellReport2() {
       '### 今後の活用': 'B25',
       '### 活用実践の成果': 'B31',
     };
+    // 一番浅いインデントのリスト行だけを同期するセル
+    const shallowCell = 'E9';
     // ----------------
   
     try {
@@ -60,16 +62,35 @@ function syncMarkdownToCellReport2() {
       const fullText = mdFile.getBlob().getDataAsString('UTF-8');
       const lines = fullText.split(/\r?\n/);
       
+      // リスト行のインデント（リスト記号前の空白数）を返す。リスト行でなければ -1
+      function getListIndent(l) {
+        const m = l.match(/^(\s*)([-*]|\d+\.)/);
+        return m ? m[1].length : -1;
+      }
+      // 見出しセクションを確定: syncMap用は全行、shallow用は一番浅い行だけ
+      function flushSection(target, items, res, shallowOut) {
+        if (!target || items.length === 0) return;
+        const allLines = items.map(x => x.line);
+        res[target] = (res[target] || []).concat(allLines);
+        const minIndent = Math.min.apply(null, items.map(x => x.indent));
+        const shallow = items.filter(x => x.indent === minIndent).map(x => x.line);
+        shallowOut.push.apply(shallowOut, shallow);
+      }
+      
       let results = {};
       Object.keys(syncMap).forEach(key => results[key] = []);
+      let shallowForE9 = []; // 一番浅いインデントの行だけ（全セクション分）
       let currentTarget = null;
+      let sectionListItems = []; // { indent, line } の配列（現在見出し配下のリスト）
   
       for (let i = 0; i < lines.length; i++) {
-        let line = lines[i]; // .trim() を外して元の空白を保持する
-        let trimmedLine = line.trim(); // 判定用に、空白を除去した変数も用意
+        let line = lines[i];
+        let trimmedLine = line.trim();
   
         // 行が見出し（#）で始まるかチェック
         if (trimmedLine.startsWith('#')) {
+          flushSection(currentTarget, sectionListItems, results, shallowForE9);
+          sectionListItems = [];
           if (syncMap[trimmedLine]) {
             currentTarget = trimmedLine;
           } else {
@@ -78,22 +99,23 @@ function syncMarkdownToCellReport2() {
           continue;
         }
   
-        // 抽出対象の見出し配下にいる場合
+        // 抽出対象の見出し配下にいる場合、リスト行ならインデント付きで収集
         if (currentTarget) {
-          // 空白を除去した状態でリスト記号から始まっているか判定
           if (trimmedLine.startsWith('-') || trimmedLine.startsWith('*') || trimmedLine.match(/^\d+\./)) {
-            // 保存するのは「元の空白（インデント）が残っている line」
-            results[currentTarget].push(line); 
+            const indent = getListIndent(line);
+            if (indent >= 0) sectionListItems.push({ indent: indent, line: line });
           }
         }
       }
+      flushSection(currentTarget, sectionListItems, results, shallowForE9);
   
-      // 5. 書き込み
+      // 5. 書き込み（syncMap: 全インデントそのまま / shallowCell: 一番浅い行だけ）
       Object.keys(syncMap).forEach(heading => {
         const cell = syncMap[heading];
         const data = results[heading].join('\n');
         targetSheet.getRange(cell).setValue(data || '');
       });
+      targetSheet.getRange(shallowCell).setValue(shallowForE9.join('\n') || '');
   
       console.log('同期完了: ' + targetFileName + ' -> ' + targetSheet.getName());
   
