@@ -5,14 +5,15 @@
 #   BOLD_LOGIN_PASSWORD  ログインパスワード
 #
 # 手動実行: Actions タブ → 「Bold portal site-login」→ Run workflow
-# 定期実行: 下の schedule をコメント解除して日時を調整してください。
+# 定期実行: schedule / cron / timezone を編集して日時を調整してください。
 
 name: Bold portal site-login
 
 on:
   workflow_dispatch:
-  # schedule:
-  #   - cron: '0 23 * * 0-4' # 例: UTC 23:00 = JST 翌8:00（日〜木）。必要に応じて変更。
+  schedule:
+    - cron: '0 22 * * 5' # 毎週金曜 22:00（timezone: Asia/Tokyo）。必要に応じて変更。
+      timezone: "Asia/Tokyo"
 
 concurrency:
   group: bold-portal-site-login

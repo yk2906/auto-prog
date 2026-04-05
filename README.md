@@ -177,7 +177,7 @@ set -a && source playwright-test/.env && set +a && node playwright-test/site-log
    | `BOLD_LOGIN_PASSWORD` | パスワード |
 
 2. **Actions** タブでワークフロー **「Bold portal site-login」** を選び、**Run workflow** で手動実行します。
-3. 定期実行する場合は、ワークフロー内の `schedule` のコメントを外し、`cron` を調整してください（時刻は UTC）。
+3. 定期実行はワークフロー内の `schedule` / `cron` で設定します。`timezone` を指定するとそのタイムゾーンで解釈されます（未指定時は UTC）。
 
 CI 上ではヘッドレス実行です。追加の環境変数が必要な場合は、同じワークフローの `Run site-login.js` ステップの `env:` に追記してください。
 
