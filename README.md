@@ -164,7 +164,22 @@ set -a && source playwright-test/.env && set +a && node playwright-test/site-log
 
 **任意の環境変数**（セレクタ・ボタン名・待機時間など）: `site-login.js` 先頭のコメントに一覧があります。一覧にない名前は README に書かないでください。
 
-スクリーンショットは `playwright/site-login-result.png` に保存されます（`.gitignore` で除外されている場合があります）。
+#### GitHub Actions で実行
+
+ワークフロー: [`.github/workflows/bold-portal-site-login.yaml`](.github/workflows/bold-portal-site-login.yaml)
+
+1. リポジトリの **Settings → Secrets and variables → Actions** で次の **Repository secrets** を登録します。
+
+   | Name | 説明 |
+   |------|------|
+   | `BOLD_LOGIN_URL` | ログインページの URL（`LOGIN_URL` と同等） |
+   | `BOLD_LOGIN_EMAIL` | メールアドレス |
+   | `BOLD_LOGIN_PASSWORD` | パスワード |
+
+2. **Actions** タブでワークフロー **「Bold portal site-login」** を選び、**Run workflow** で手動実行します。
+3. 定期実行する場合は、ワークフロー内の `schedule` のコメントを外し、`cron` を調整してください（時刻は UTC）。
+
+CI 上ではヘッドレス実行です。追加の環境変数が必要な場合は、同じワークフローの `Run site-login.js` ステップの `env:` に追記してください。
 
 ## GAS版の使用方法
 

@@ -12,9 +12,6 @@ google_auto/gas/.clasp.json
 .clasp.json
 appsscript.json
 
-# ログイン試験用（スクリプト出力）
-site-login-result.png
-
 # シークレット
 .env
 .env.local

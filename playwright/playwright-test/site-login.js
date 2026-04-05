@@ -759,8 +759,6 @@ async function clickScheduleInWeekIncludingRunDay(page) {
     await clickScheduleInWeekIncludingRunDay(page);
 
     console.log('最終ページのタイトル:', await page.title());
-    await page.screenshot({ path: 'site-login-result.png', fullPage: true });
-    console.log('スクリーンショット: site-login-result.png');
   } finally {
     await browser.close();
   }

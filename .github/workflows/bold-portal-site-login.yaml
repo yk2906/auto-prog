@@ -1,0 +1,51 @@
+# Bold ポータル勤怠: playwright/playwright-test/site-login.js
+# 必要な Secrets（Repository secrets）:
+#   BOLD_LOGIN_URL       ログインページの URL
+#   BOLD_LOGIN_EMAIL     ログインメール
+#   BOLD_LOGIN_PASSWORD  ログインパスワード
+#
+# 手動実行: Actions タブ → 「Bold portal site-login」→ Run workflow
+# 定期実行: 下の schedule をコメント解除して日時を調整してください。
+
+name: Bold portal site-login
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '0 23 * * 0-4' # 例: UTC 23:00 = JST 翌8:00（日〜木）。必要に応じて変更。
+
+concurrency:
+  group: bold-portal-site-login
+  cancel-in-progress: true
+
+jobs:
+  site-login:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: playwright
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: playwright/package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run site-login.js
+        env:
+          LOGIN_URL: ${{ secrets.BOLD_LOGIN_URL }}
+          LOGIN_EMAIL: ${{ secrets.BOLD_LOGIN_EMAIL }}
+          LOGIN_PASSWORD: ${{ secrets.BOLD_LOGIN_PASSWORD }}
+        run: node playwright-test/site-login.js
