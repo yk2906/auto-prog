@@ -2,7 +2,7 @@
 
 諸々の自動化プログラム置き場
 
-Google Workspace（Drive、Sheets、Calendar）の自動化とWebスクレイピングを行うPythonプロジェクトです。
+Python を中心に、Google Workspace（Drive、Sheets、Calendar）の自動化、Web スクレイピング、ブラウザ自動化（Playwright）を置いています。
 
 ## プロジェクト構成
 
@@ -28,6 +28,11 @@ auto-prog/
 │       └── refactored_copy_spreadsheet_mokuhyoukanri_report.py
 ├── gunpla/                   # Webスクレイピング
 │   └── notif-mg-gunpla-info.py
+├── playwright/               # ブラウザ自動化（Node / Playwright）
+│   ├── playwright-test/      # 単体スクリプト（例: site-login.js）
+│   ├── tests/                # Playwright テスト（@playwright/test）
+│   ├── package.json
+│   └── playwright.config.ts
 ├── test/                     # テスト・練習用
 ├── pyproject.toml            # プロジェクト設定
 └── uv.lock                   # 依存関係ロックファイル
@@ -61,18 +66,35 @@ auto-prog/
 - `gunpla/notif-mg-gunpla-info.py`
 - バンダイホビーサイト（MGガンプラ）の新着情報を取得・表示
 
+### ブラウザ自動化（Bold ポータル勤怠）
+
+- `playwright/playwright-test/site-login.js`
+- Bold ポータルにメール＋パスワードでログインし、勤怠ビューへ遷移して操作します。
+- **更新対象の日程**: 実行日を含む直近 7 日間（実行日より前 6 日＋実行日）。未来の日付は対象外です。
+- **テレワーク等のチェック**: 上記の範囲で、月曜・水曜の行のみ「定時」の前にオンにしてから、各行で「定時」→「更新」を実行します。
+- ログイン後の時刻入力などは行いません。必要なら `HEADED=1` でブラウザ表示を確認してください。
+
 ## セットアップ
 
 ### 前提条件
 
 - Python 3.10以上
 - [uv](https://github.com/astral-sh/uv) (インストール方法: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- Playwright スクリプト利用時: [Node.js](https://nodejs.org/)（LTS 推奨）
 
 ### インストール
 
 ```bash
 # 依存関係のインストール
 uv sync
+```
+
+#### Playwright（`playwright/`）
+
+```bash
+cd playwright
+npm install
+npx playwright install chromium
 ```
 
 ### 設定
@@ -115,6 +137,33 @@ cd gunpla
 uv run python notif-mg-gunpla-info.py
 ```
 
+### Bold ポータル勤怠（site-login）
+
+リポジトリルートから:
+
+```bash
+cd playwright
+export LOGIN_URL='https://（ログインURL）'
+export LOGIN_EMAIL='you@example.com'
+export LOGIN_PASSWORD='secret'
+# ブラウザを表示する場合（省略時はヘッドレス）
+export HEADED=1
+node playwright-test/site-login.js
+```
+
+`.env` を使う例（`playwright/playwright-test/.env` に `LOGIN_URL` 等を記載。リポジトリには含めないでください）:
+
+```bash
+cd playwright
+set -a && source playwright-test/.env && set +a && node playwright-test/site-login.js
+```
+
+**必須の環境変数**: `LOGIN_URL`, `LOGIN_EMAIL`, `LOGIN_PASSWORD`
+
+**任意の環境変数**（セレクタ・ボタン名・待機時間など）: `site-login.js` 先頭のコメントに一覧があります。一覧にない名前は README に書かないでください。
+
+スクリーンショットは `playwright/site-login-result.png` に保存されます（`.gitignore` で除外されている場合があります）。
+
 ## GAS版の使用方法
 
 GAS版は認証不要で、定期実行の設定も簡単です。詳細は `google_auto/gas/README.md` を参照してください。
@@ -153,6 +202,8 @@ GAS版は認証不要で、定期実行の設定も簡単です。詳細は `goo
 - `requests`: HTTPリクエスト
 
 詳細は `pyproject.toml` を参照してください。
+
+Playwright の npm 依存は `playwright/package.json` を参照してください。
 
 ## 注意事項
 
