@@ -1,0 +1,26 @@
+{
+  "name": "auto-prog",
+  "version": "1.0.0",
+  "description": "諸々の自動化プログラム置き場",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yk2906/python.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/yk2906/python/issues"
+  },
+  "homepage": "https://github.com/yk2906/python#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.5.2"
+  }
+}

@@ -2,6 +2,8 @@ test/**
 
 */*.json
 !/google_auto/config.json
+!/playwright/package.json
+!/playwright/package-lock.json
 
 # uv
 uv.lock
