@@ -10,6 +10,13 @@ function convertSheetsToExcel() {
       let file = files.next();
       let fileId = file.getId();
       let fileName = file.getName() + ".xlsx";
+
+      let existingFiles = outputFolder.getFilesByName(fileName);
+      while (existingFiles.hasNext()) {
+        let existingFile = existingFiles.next();
+        existingFile.setTrashed(true); // ゴミ箱へ移動（誤操作防止のため完全に消さずゴミ箱推奨）
+        console.log("既存の同名ファイルをゴミ箱に移動しました: " + fileName);
+      }
       
       // Excelエクスポート用URLの生成
       let url = "https://docs.google.com/spreadsheets/d/" + fileId + "/export?format=xlsx";
