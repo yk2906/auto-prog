@@ -4,13 +4,26 @@
 
 ## ファイル構成
 
+### 日次・月次レポート（`Setup.gs` のプロパティと連携）
+
 - `Code.gs`: 共通関数（設定取得、ファイル操作、ログ出力など）
 - `CopyDocumentReport.gs`: Googleドキュメントの月次コピー
 - `CopySpreadsheetReport.gs`: 日次レポートの自動生成（後述）
 - `CopyMokuhyoukanriReport.gs`: 目標管理レポートの自動生成
 - `Setup.gs`: 初期設定とトリガー設定
-- `appsscript.json`: GAS設定ファイル
-- `.clasp.json`: clasp設定ファイル（scriptIdは後で設定）
+
+### その他のスクリプト（各ファイル内の定数・設定を編集して利用）
+
+- `ConvertSheetsToExcel.gs`: 指定フォルダ内の Google スプレッドシートを xlsx として別フォルダへ保存（`convertSheetsToExcel()`。ソース／出力フォルダ ID はファイル内）
+- `sync/SyncObsidianSS_report2.gs`: Markdown と同名のスプレッドシートの当月シートへ見出し単位で同期（`syncMarkdownToCellReport2()`）
+- `sync/SyncObsidianSS_report3.gs`: 同上（項番3用、`syncMarkdownToCellReport3()`）
+- `sync/SyncObsidianSS_report4.gs`: 同上（自主勉強会レポート用、`syncMarkdownToCellReport4()`）
+- `objective_sync/objective_sync.gs`: 2 フォルダ間の同名スプレッドシートで、指定シート・セルの値をコピー（`syncCellBetweenFolders()`）
+
+### 設定ファイル
+
+- `appsscript.json`: GAS 設定ファイル（ローカル開発・手動 `clasp push` 用）
+- `.clasp.json`: clasp 設定ファイル（`scriptId` は `clasp create` 後に設定。Git には含めない）
 
 ## CopySpreadsheetReport（日次レポート）の仕様
 
@@ -60,6 +73,7 @@ GASエディタで以下の手順を実行：
    - `copyDocumentReport()`
    - `copySpreadsheetReport()`
    - `copyMokuhyoukanriReport()`
+   - （利用する場合）`convertSheetsToExcel()`、`syncMarkdownToCellReport2` / `3` / `4`、`syncCellBetweenFolders()` — いずれも対応する `.gs` 内のフォルダ ID・ファイル名・セル指定を先に合わせてください
 
 ### 4. トリガー設定（任意）
 
@@ -79,6 +93,8 @@ GASエディタで以下の手順を実行：
 ## CI/CD（GitHub Actions）
 
 `google_auto/gas/` 配下のファイルを変更して GitHub に push すると、自動で `clasp push` が実行され、GAS プロジェクトに反映されます。
+
+ワークフロー実行時は、リポジトリの `appsscript.json` の有無にかかわらず、デプロイ直前に既定の `appsscript.json`（タイムゾーン Asia/Tokyo、runtime V8 等）を生成してから `clasp push --force` します。ローカルで追加した `appsscript.json` の項目を CI でも使う場合は、`.github/workflows/deploy-gas.yaml` 側の生成内容を合わせる必要があります。
 
 ### 必要な GitHub Secrets
 
