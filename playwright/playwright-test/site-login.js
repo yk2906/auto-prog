@@ -16,7 +16,7 @@
  * .env を使う例（bash）: set -a && source playwright-test/.env && set +a && node playwright-test/site-login.js
  *
  * 任意:
- *   LOGIN_BUTTON_NAME  ログインボタンの表示名（既定: ログイン）
+ *   LOGIN_BUTTON_NAME  ログインボタンの表示名（既定: Login）
  *   DATE_PARAGRAPH_SELECTOR  日付が入る p のセレクタ（既定: p.chakra-text.css-fivo40）
  *   SCHEDULE_YEAR   日程一覧の年（4桁）。未設定時は実行日の年
  *   SCHEDULE_MONTH  日程一覧の月（1–12）。未設定時は実行日の月
@@ -728,7 +728,7 @@ async function clickScheduleInWeekIncludingRunDay(page) {
   const loginUrl = requireEnv('LOGIN_URL');
   const email = requireEnv('LOGIN_EMAIL');
   const password = requireEnv('LOGIN_PASSWORD');
-  const loginButtonName = process.env.LOGIN_BUTTON_NAME?.trim() || 'ログイン';
+  const loginButtonName = process.env.LOGIN_BUTTON_NAME?.trim() || 'Login';
 
   const headless = !(process.env.HEADED === '1' || process.env.HEADLESS === '0');
 
