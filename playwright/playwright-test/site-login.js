@@ -3,7 +3,7 @@
  *
  * ログイン後: PORTAL_PAGE_A → PORTAL_PAGE_B
  * PAGE_B で p.chakra-text.css-fivo40 の日付を読み、実行日を含む直近7日間（実行日より前6日＋実行日）のみ「定時」→「更新」（未来日は対象外）
- * テレワーク等のチェックはその範囲の月曜・水曜の行だけ「定時」の前にオン
+ * テレワーク等のチェックはその範囲の月曜・水曜の行だけ「定時」の前にオン。申請→交通費アコーディオン→テンプレートから追加→テンプレートを使用（先頭）→保存は火・木・金の行のみ「定時」前に実行
  * 日付表示は「1日(水)」のように日＋曜のみの形式を想定（年月は実行日の年月。別月表示なら SCHEDULE_YEAR / SCHEDULE_MONTH）
  *
  * 使い方（例）:
@@ -26,6 +26,8 @@
  *   ROW_CHECKBOX_INPUT_SELECTOR  テーブル行内の input（既定: input.chakra-checkbox__input）
  *   TELEWORK_COLUMN_INDEX  テレワークチェックがある列（0 始まり。既定: 1＝左から2列目）
  *   AFTER_UPDATE_MS  「更新」押下後の待機ミリ秒（既定: 10000。反映待ち用。0 で無効）
+ *   SCHEDULE_APPLY_BUTTON_NAME  行の「申請」ボタン表示名（既定: 申請。火・木・金の交通費テンプレート流れで使用）
+ *   EXPENSE_ACCORDION_LABEL  モーダル内アコーディオンの見出しテキスト（既定: 交通費 1）
  *
  * Chakra チェックの成否は input.checked に加え、label / control の data-checked（data-state=checked）も見る。
  *
@@ -268,6 +270,44 @@ async function clickNamedButtonNearDateParagraph(pLocator, buttonName, options =
   throw new Error(
     `日付行の近くに名前「${buttonName}」の有効な button が ${timeoutMs}ms 以内に見つかりません（DOM・表記・disabled 解除待ちを要確認）`,
   );
+}
+
+/**
+ * 火・木・金の定時前: 行の「申請」→モーダルで交通費アコーディオン開く→テンプレートから追加→先頭のテンプレートを使用→保存
+ */
+async function runApplyAndExpenseTemplateFlow(page, rowParagraph) {
+  const applyName = process.env.SCHEDULE_APPLY_BUTTON_NAME?.trim() || '申請';
+  const expenseLabel = process.env.EXPENSE_ACCORDION_LABEL?.trim() || '交通費 1';
+
+  await clickNamedButtonNearDateParagraph(rowParagraph, applyName);
+  await waitForNetworkIdle(page);
+
+  const outerDialog = page
+    .getByRole('dialog')
+    .filter({ has: page.locator('button.chakra-accordion__button').filter({ hasText: expenseLabel }) })
+    .last();
+  await outerDialog.waitFor({ state: 'visible', timeout: 25_000 });
+
+  const accordionButton = outerDialog.locator('button.chakra-accordion__button').filter({ hasText: expenseLabel });
+  await accordionButton.first().waitFor({ state: 'visible', timeout: 15_000 });
+  const expanded = await accordionButton.first().getAttribute('aria-expanded');
+  if (expanded !== 'true') {
+    await accordionButton.first().click();
+    await sleep(400);
+  }
+
+  await outerDialog.getByRole('button', { name: 'テンプレートから追加' }).click({ timeout: 15_000 });
+  await waitForNetworkIdle(page);
+
+  const templateUseBtn = page.getByRole('button', { name: 'テンプレートを使用' }).first();
+  await templateUseBtn.waitFor({ state: 'visible', timeout: 15_000 });
+  await templateUseBtn.click();
+  await waitForNetworkIdle(page);
+
+  await outerDialog.getByRole('button', { name: '保存' }).click({ timeout: 20_000 });
+  await waitForNetworkIdle(page);
+
+  await outerDialog.waitFor({ state: 'hidden', timeout: 30_000 }).catch(() => {});
 }
 
 /** 勤怠行内の Chakra チェック用 input を解決する */
@@ -595,9 +635,15 @@ function isMondayOrWednesday(d) {
   return wd === 1 || wd === 3;
 }
 
+/** getDay(): 火曜=2, 木曜=4, 金曜=5 */
+function isTuesdayThursdayFriday(d) {
+  const wd = d.getDay();
+  return wd === 2 || wd === 4 || wd === 5;
+}
+
 /**
  * PAGE_B 上の日程一覧から、実行日を含む直近7日間の行のみ「定時」→「更新」。
- * テレワークチェックは月曜・水曜の行のみ「定時」前にオン。
+ * テレワークチェックは月・水のみ「定時」前。申請〜交通費テンプレート〜保存は火・木・金のみ「定時」前。
  */
 async function clickScheduleInWeekIncludingRunDay(page) {
   const selector = process.env.DATE_PARAGRAPH_SELECTOR?.trim() || DEFAULT_DATE_PARAGRAPH_SELECTOR;
@@ -643,17 +689,21 @@ async function clickScheduleInWeekIncludingRunDay(page) {
   const updateButtonName = process.env.SCHEDULE_UPDATE_BUTTON_NAME?.trim() || '更新';
 
   console.log(
-    `上記7日間の ${candidates.length} 日について、月・水のみ「定時」前にチェック、その後各行「${actionButtonName}」→「${updateButtonName}」（日付の古い順）`,
+    `上記7日間の ${candidates.length} 日について、月・水は「定時」前にチェックのみ、火・木・金は「定時」前に申請〜交通費テンプレート→保存、その後各行「${actionButtonName}」→「${updateButtonName}」（日付の古い順）`,
   );
 
   for (const c of candidates) {
-    if (!isMondayOrWednesday(c.date)) {
-      continue;
-    }
     const rowParagraph = items.nth(c.i);
-    console.log(`月・水: 「定時」の前にチェック — "${c.text}"`);
-    await ensureRowChakraCheckboxCheckedNearDateParagraph(rowParagraph);
-    await waitForNetworkIdle(page);
+    if (isMondayOrWednesday(c.date)) {
+      console.log(`月・水: 「定時」の前にチェック — "${c.text}"`);
+      await ensureRowChakraCheckboxCheckedNearDateParagraph(rowParagraph);
+      await waitForNetworkIdle(page);
+    }
+    if (isTuesdayThursdayFriday(c.date)) {
+      console.log(`火・木・金: 申請→交通費→テンプレート→保存 — "${c.text}"`);
+      await runApplyAndExpenseTemplateFlow(page, rowParagraph);
+      await waitForNetworkIdle(page);
+    }
   }
 
   for (const c of candidates) {
