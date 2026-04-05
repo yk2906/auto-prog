@@ -1,4 +1,6 @@
 import logging
+import json
+import os
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -9,9 +11,24 @@ SCOPES = [
     "https://www.googleapis.com/auth/calendar.readonly"
 ]
 
+def load_config(config_file='config.json'):
+    """スクリプトと同じディレクトリにある設定ファイルを読み込みます。"""
+    # スクリプトがあるディレクトリの config.json を取得
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(current_dir, config_file)
+    try:
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        logging.error(f"設定ファイル '{config_path}' が見つかりません。")
+        return None
+
 def get_credentials(credentials_file):
     """認証情報を取得します。"""
-    return Credentials.from_service_account_file(credentials_file, scopes=SCOPES)
+    # credentials_file もパス解決を行う
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    creds_path = os.path.join(current_dir, credentials_file)
+    return Credentials.from_service_account_file(creds_path, scopes=SCOPES)
 
 def get_drive_service(credentials_file):
     """Google Drive APIクライアントを返します。"""

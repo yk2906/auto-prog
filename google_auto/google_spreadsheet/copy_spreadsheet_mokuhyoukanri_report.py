@@ -1,146 +1,180 @@
-import re
 import datetime
-from googleapiclient.discovery import build
+import logging
+import json
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from googleapiclient.errors import HttpError
-from google.oauth2.service_account import Credentials
+from google_api_client import get_sheets_service, get_calendar_service, get_latest_file_in_folder, get_drive_service, load_config
 
-# 認証情報の設定
-SCOPES = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/calendar.readonly"]
-creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
+# ロギング設定
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Google Drive APIクライアントの作成
-drive_service = build('drive', 'v3', credentials=creds)
-
-# Google Sheets APIクライアントの作成
-sheets_service = build('sheets', 'v4', credentials=creds)
-
-# Google Calendar APIクライアントの作成
-calendar_service = build('calendar', 'v3', credentials=creds)
-
-def get_coaching_dates(calendar_id):
-    now = datetime.datetime.utcnow()
-    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    end_of_month = (start_of_month + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(seconds=1)
-
-    events_result = calendar_service.events().list(
-        calendarId=calendar_id, timeMin=start_of_month.isoformat() + 'Z',
-        timeMax=end_of_month.isoformat() + 'Z', singleEvents=True,
-        orderBy='startTime').execute()
-    events = events_result.get('items', [])
-
-    coaching_dates = []
-    for event in events:
-        if 'コーチ面談' in event.get('summary', ''):
-            start_date = event['start'].get('dateTime', event['start'].get('date'))
-            coaching_dates.append(start_date[:10])  # YYYY-MM-DD形式
-
-    return coaching_dates
-
-def copy_latest_sheet_and_clear_cells(spreadsheet_id, cells_to_clear, calendar_id):
+def get_coaching_dates(calendar_service, calendar_id):
+    """Googleカレンダーから今月のコーチ面談の日付を取得します。"""
     try:
-        coaching_dates = get_coaching_dates(calendar_id)
-        if not coaching_dates:
-            print("今月のコーチ面談の予定が見つかりませんでした。")
-            return
+        now = datetime.datetime.utcnow()
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_of_month = (start_of_month + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(seconds=1)
 
-        # 最新のシートを取得（一番右のシート）
+        events_result = calendar_service.events().list(
+            calendarId=calendar_id, timeMin=start_of_month.isoformat() + 'Z',
+            timeMax=end_of_month.isoformat() + 'Z', singleEvents=True,
+            orderBy='startTime').execute()
+        events = events_result.get('items', [])
+
+        coaching_dates = []
+        for event in events:
+            if 'コーチ面談' in event.get('summary', ''):
+                start_date = event['start'].get('dateTime', event['start'].get('date'))
+                coaching_dates.append(start_date[:10])  # YYYY-MM-DD
+        
+        if not coaching_dates:
+            logging.warning("今月のコーチ面談の予定が見つかりませんでした。")
+        return coaching_dates
+    except HttpError as error:
+        logging.error(f"カレンダーイベントの取得中にエラーが発生しました: {error}")
+        return []
+
+def get_latest_sheet(sheets_service, spreadsheet_id):
+    """スプレッドシートの最新（一番右）のシートを取得します。"""
+    try:
         spreadsheet = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
         sheets = spreadsheet.get('sheets', [])
-        latest_sheet = sheets[-1]
-        latest_sheet_id = latest_sheet['properties']['sheetId']
-        latest_sheet_title = latest_sheet['properties']['title']
-        print(f"最新のシート '{latest_sheet_title}' をコピー中...")
+        if not sheets:
+            logging.warning(f"スプレッドシート {spreadsheet_id} にシートがありません。")
+            return None
+        return sheets[-1]
+    except HttpError as error:
+        logging.error(f"スプレッドシートの取得中にエラーが発生しました: {error}")
+        return None
 
-        # 新しいシート名を生成
-        new_sheet_title = coaching_dates[0].replace('-', '')  # 最初のコーチ面談の日付を使用
-
-        # シートをコピー
-        requests = [
-            {
-                "duplicateSheet": {
-                    "sourceSheetId": latest_sheet_id,
-                    "insertSheetIndex": len(sheets),  # 一番右に配置
-                    "newSheetName": new_sheet_title
-                }
+def duplicate_sheet(sheets_service, spreadsheet_id, source_sheet_id, new_sheet_name):
+    """シートを複製します。"""
+    try:
+        requests = [{
+            "duplicateSheet": {
+                "sourceSheetId": source_sheet_id,
+                "insertSheetIndex": 9999, # 一番右に配置
+                "newSheetName": new_sheet_name
             }
-        ]
+        }]
         body = {"requests": requests}
         response = sheets_service.spreadsheets().batchUpdate(
             spreadsheetId=spreadsheet_id, body=body).execute()
+        new_sheet_properties = response['replies'][0]['duplicateSheet']['properties']
+        logging.info(f"新しいシート '{new_sheet_name}' を作成しました。")
+        return new_sheet_properties['sheetId']
+    except HttpError as error:
+        logging.error(f"シートの複製中にエラーが発生しました: {error}")
+        return None
 
-        # 新しいシートIDを取得
-        new_sheet_id = response['replies'][0]['duplicateSheet']['properties']['sheetId']
-        print(f"新しいシート '{new_sheet_title}' を作成しました。")
-
-        # コピーしたシートのタブの色を赤に設定
+def update_sheet_properties_and_cells(sheets_service, spreadsheet_id, new_sheet_id, old_sheet_id, cells_to_clear, date_cell):
+    """シートのプロパティ（タブ色）とセルを更新します。"""
+    try:
         requests = [
+            # 新しいシートのタブを赤色に
             {
                 "updateSheetProperties": {
-                    "properties": {
-                        "sheetId": new_sheet_id,
-                        "tabColor": {"red": 1.0, "green": 0.0, "blue": 0.0}
-                    },
+                    "properties": {"sheetId": new_sheet_id, "tabColor": {"red": 1.0}},
                     "fields": "tabColor"
                 }
             },
-            # コピー元のシートのタブの色を白に設定
+            # 古いシートのタブをデフォルト色に
             {
                 "updateSheetProperties": {
-                    "properties": {
-                        "sheetId": latest_sheet_id,
-                        "tabColor": {"red": 1.0, "green": 1.0, "blue": 1.0}
-                    },
+                    "properties": {"sheetId": old_sheet_id, "tabColor": {"red": 1.0, "green": 1.0, "blue": 1.0}},
                     "fields": "tabColor"
                 }
             }
         ]
 
-        # 特定のセルを空白にする
-        today_date = datetime.datetime.now().strftime("%-m/%-d/%Y")
-        requests.extend([
-            {
+        # セルのクリア
+        if cells_to_clear:
+            requests.extend([
+                {
+                    "updateCells": {
+                        "range": {
+                            "sheetId": new_sheet_id,
+                            "startRowIndex": row - 1, "endRowIndex": row,
+                            "startColumnIndex": col - 1, "endColumnIndex": col
+                        },
+                        "rows": [{"values": [{"userEnteredValue": {}}]}],
+                        "fields": "userEnteredValue"
+                    }
+                }
+                for row, col in cells_to_clear
+            ])
+
+        # 日付の更新
+        if date_cell:
+            today_date = datetime.datetime.now().strftime("%-m/%-d/%Y")
+            requests.append({
                 "updateCells": {
                     "range": {
                         "sheetId": new_sheet_id,
-                        "startRowIndex": cell_row - 1,
-                        "endRowIndex": cell_row,
-                        "startColumnIndex": cell_col - 1,
-                        "endColumnIndex": cell_col
+                        "startRowIndex": date_cell['row'] - 1, "endRowIndex": date_cell['row'],
+                        "startColumnIndex": date_cell['column'] - 1, "endColumnIndex": date_cell['column']
                     },
-                    "rows": [{"values": [{"userEnteredValue": {}}]}],
+                    "rows": [{"values": [{"userEnteredValue": {"stringValue": today_date}}]}],
                     "fields": "userEnteredValue"
                 }
-            }
-            for cell_row, cell_col in cells_to_clear
-        ])
-
-        requests.append({
-            "updateCells": {
-                "range": {
-                    "sheetId": new_sheet_id,
-                    "startRowIndex": 7,  # 8行目 (0ベース)
-                    "endRowIndex": 8,
-                    "startColumnIndex": 4,  # 5列目 (0ベース)
-                    "endColumnIndex": 5
-                },
-                "rows": [{"values": [{"userEnteredValue": {"stringValue": today_date}}]}],
-                "fields": "userEnteredValue"
-            }
-        })
+            })
 
         body = {"requests": requests}
-        sheets_service.spreadsheets().batchUpdate(
-            spreadsheetId=spreadsheet_id, body=body).execute()
-        print(f"新しいシート '{new_sheet_title}' の指定されたセルを空白にしました。")
-
+        sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=body).execute()
+        logging.info(f"シート {new_sheet_id} のプロパティとセルを更新しました。")
+        return True
     except HttpError as error:
-        print(f"エラーが発生しました: {error}")
-    except Exception as e:
-        print(f"予期しないエラーが発生しました: {e}")
+        logging.error(f"シートのプロパティとセルの更新中にエラーが発生しました: {error}")
+        return False
 
-# メイン処理
-spreadsheet_id = "1dHSv-X7yCVGpIRL4gRH_Hj-TDjG4M-xS6Xo-SLgecto"
-calendar_id = "yk050696@gmail.com"  # 取得したいカレンダーのID
-column_to_clear = 39
-cells_to_clear = [(22, column_to_clear), (31, column_to_clear), (40, column_to_clear), (50, column_to_clear), (60, column_to_clear)]  # 空白にするセルのリスト（(行, 列)形式で指定、1始まり）
-copy_latest_sheet_and_clear_cells(spreadsheet_id, cells_to_clear, calendar_id)
+def main():
+    """メイン処理"""
+    config = load_config()
+    if not config:
+        return
+
+    report_config = config.get('goal_management_report', {})
+    source_folder_id = report_config.get('source_folder_id')
+    calendar_id = report_config.get('calendar_id')
+    cells_to_clear = report_config.get('cells_to_clear', [])
+    date_cell = report_config.get('date_cell')
+    credentials_file = config.get('credentials_file', 'credentials.json')
+
+    if not all([source_folder_id, calendar_id]):
+        logging.error("設定ファイルに source_folder_id または calendar_id が指定されていません。")
+        return
+
+    try:
+        drive_service = get_drive_service(credentials_file)
+        sheets_service = get_sheets_service(credentials_file)
+        calendar_service = get_calendar_service(credentials_file)
+
+        coaching_dates = get_coaching_dates(calendar_service, calendar_id)
+        if not coaching_dates:
+            return
+
+        mime_type = 'application/vnd.google-apps.spreadsheet'
+        latest_file = get_latest_file_in_folder(drive_service, source_folder_id, mime_type)
+        if not latest_file:
+            return
+
+        spreadsheet_id = latest_file['id']
+        latest_sheet = get_latest_sheet(sheets_service, spreadsheet_id)
+        if not latest_sheet:
+            return
+
+        new_sheet_title = coaching_dates[0].replace('-', '')
+        latest_sheet_id = latest_sheet['properties']['sheetId']
+        
+        new_sheet_id = duplicate_sheet(sheets_service, spreadsheet_id, latest_sheet_id, new_sheet_title)
+
+        if new_sheet_id:
+            update_sheet_properties_and_cells(sheets_service, spreadsheet_id, new_sheet_id, latest_sheet_id, cells_to_clear, date_cell)
+
+    except Exception as e:
+        logging.error(f"予期しないエラーが発生しました: {e}", exc_info=True)
+
+if __name__ == "__main__":
+    main()

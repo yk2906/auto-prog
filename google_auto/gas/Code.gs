@@ -96,10 +96,8 @@ function clearCells(sheet, cellsToClear) {
 function updateDate(sheet, dateCell) {
   if (dateCell && dateCell.row && dateCell.column) {
     const now = new Date();
-    const month = now.getMonth() + 1;
-    const day = now.getDate();
-    const year = now.getFullYear();
-    const dateString = month + '/' + day + '/' + year;
+    // Pythonの %-m/%-d/%Y に合わせる (例: 4/5/2026)
+    const dateString = Utilities.formatDate(now, Session.getScriptTimeZone(), "M/d/yyyy");
     sheet.getRange(dateCell.row, dateCell.column).setValue(dateString);
   }
 }

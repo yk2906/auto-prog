@@ -1,28 +1,24 @@
-import re
 import datetime
-from googleapiclient.discovery import build
+import logging
+import json
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from googleapiclient.errors import HttpError
-from google.oauth2.service_account import Credentials
+from google_api_client import get_drive_service, get_latest_file_in_folder, load_config
 
-# 認証情報の設定
-SCOPES = ["https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
-
-# Google Drive APIクライアントの作成
-drive_service = build('drive', 'v3', credentials=creds)
+# ロギング設定
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def generate_new_file_name():
-    current_month = datetime.datetime.now().strftime("%-m月")  # "2月" の形式
+    """新しいファイル名を生成します。"""
+    current_month = datetime.datetime.now().strftime("%-m月")
     return f"状況報告書_{current_month}"
 
-def copy_google_document(file_id, destination_folder_id=None):
+def copy_google_document(drive_service, file_id, new_file_name, destination_folder_id=None):
+    """Googleドキュメントをコピーします。"""
     try:
-        new_file_name = generate_new_file_name()
-
-        # Google Drive API を使用してファイルをコピー
         copy_metadata = {"name": new_file_name}
-        
-        # 指定フォルダにコピーする場合
         if destination_folder_id:
             copy_metadata["parents"] = [destination_folder_id]
 
@@ -30,14 +26,43 @@ def copy_google_document(file_id, destination_folder_id=None):
             fileId=file_id, body=copy_metadata
         ).execute()
 
-        print(f"新しい Google Document が作成されました: {new_file_name}")
-        print(f"ファイル ID: {copied_file['id']}")
-
+        logging.info(f"新しい Google Document が作成されました: {new_file_name}")
+        logging.info(f"ファイル ID: {copied_file['id']}")
+        return copied_file['id']
     except HttpError as error:
-        print(f"エラーが発生しました: {error.resp.status} - {error.error_details}")
+        logging.error(f"ドキュメントのコピー中にエラーが発生しました: {error.resp.status} - {error.error_details}")
+        return None
 
-# メイン処理
-source_file_id = "1RmSdsKFvRwQnYHOmUeURSa_il9zUWopog1Kt_4dotp4"  # コピー元のGoogleドキュメントID
-destination_folder_id = "12gKaJbxAjtSkCatQF0sm6vl2GLC-fvVP"  # 保存先フォルダID（省略可）
+def main():
+    """メイン処理"""
+    config = load_config()
+    if not config:
+        return
 
-copy_google_document(source_file_id, destination_folder_id)
+    doc_config = config.get('document_report', {})
+    source_folder_id = doc_config.get('source_folder_id')
+    destination_folder_id = doc_config.get('destination_folder_id')
+    credentials_file = config.get('credentials_file', 'credentials.json')
+
+    if not source_folder_id:
+        logging.error("設定ファイルに source_folder_id が指定されていません。")
+        return
+
+    try:
+        drive_service = get_drive_service(credentials_file)
+        
+        # 最新のGoogleドキュメントのIDを取得
+        mime_type = 'application/vnd.google-apps.document'
+        latest_file = get_latest_file_in_folder(drive_service, source_folder_id, mime_type)
+
+        if not latest_file:
+            return # ファイルが見つからなければ終了
+
+        new_file_name = generate_new_file_name()
+        copy_google_document(drive_service, latest_file['id'], new_file_name, destination_folder_id)
+        
+    except Exception as e:
+        logging.error(f"予期しないエラーが発生しました: {e}")
+
+if __name__ == "__main__":
+    main()
