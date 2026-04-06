@@ -91,6 +91,16 @@ function copyMokuhyoukanriReport() {
     // シートを複製
     const newSheet = latestSheet.copyTo(spreadsheet);
     newSheet.setName(newSheetTitle);
+
+    // スプレッドシート名の先頭 yyyyMMdd を、コピー日程(baseSheetTitle)に合わせて更新
+    const currentSpreadsheetName = latestFile.getName();
+    const updatedSpreadsheetName = currentSpreadsheetName.replace(/^\d{8}/, baseSheetTitle);
+    if (currentSpreadsheetName !== updatedSpreadsheetName) {
+      latestFile.setName(updatedSpreadsheetName);
+      log('スプレッドシート名を更新しました: ' + currentSpreadsheetName + ' -> ' + updatedSpreadsheetName);
+    } else {
+      log('スプレッドシート名の先頭 yyyyMMdd は更新不要でした: ' + currentSpreadsheetName);
+    }
     
     // 新しいシートのタブを赤色に
     newSheet.setTabColor('#ff0000');
