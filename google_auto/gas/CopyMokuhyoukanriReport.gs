@@ -26,6 +26,24 @@ function getCoachingDates(calendarId) {
 }
 
 /**
+ * シート名が重複する場合は連番を付けて一意化
+ */
+function getUniqueSheetName(spreadsheet, baseName) {
+  const names = spreadsheet.getSheets().map(function(sheet) {
+    return sheet.getName();
+  });
+  if (names.indexOf(baseName) === -1) {
+    return baseName;
+  }
+
+  let i = 2;
+  while (names.indexOf(baseName + '_' + i) !== -1) {
+    i++;
+  }
+  return baseName + '_' + i;
+}
+
+/**
  * メイン処理: 目標管理レポートの自動生成
  */
 function copyMokuhyoukanriReport() {
@@ -56,6 +74,7 @@ function copyMokuhyoukanriReport() {
     }
     
     const spreadsheet = SpreadsheetApp.openById(latestFile.getId());
+    log('対象スプレッドシート: ' + spreadsheet.getName() + ' (ID: ' + spreadsheet.getId() + ')');
     const sheets = spreadsheet.getSheets();
     
     if (sheets.length === 0) {
@@ -65,7 +84,9 @@ function copyMokuhyoukanriReport() {
     
     // 最新のシートを取得
     const latestSheet = sheets[sheets.length - 1];
-    const newSheetTitle = coachingDates[0]; // 最初のコーチ面談の日付
+    const baseSheetTitle = coachingDates[0]; // 最初のコーチ面談の日付
+    const newSheetTitle = getUniqueSheetName(spreadsheet, baseSheetTitle);
+    log('作成予定シート名: ' + baseSheetTitle + ' -> 実際の作成名: ' + newSheetTitle);
     
     // シートを複製
     const newSheet = latestSheet.copyTo(spreadsheet);
