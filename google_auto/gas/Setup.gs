@@ -7,7 +7,7 @@ function setupConfig() {
   
   // ドキュメントレポート設定
   properties.setProperty('DOC_SOURCE_FOLDER_ID', '1jA0UwCHPFDo-Nutn7m_I-DTJhk2N4wG-');
-  properties.setProperty('DOC_DEST_FOLDER_ID', '12gKaJbxAjtSkCatQF0sm6vl2GLC-fvVP');
+  properties.setProperty('DOC_DEST_FOLDER_ID', '1jA0UwCHPFDo-Nutn7m_I-DTJhk2N4wG-');
   
   // 日次レポート設定
   properties.setProperty('DAILY_SOURCE_FOLDER_ID', '1fkouegK9E7AlonDmaqQSaZCCnjJe1eBB');
