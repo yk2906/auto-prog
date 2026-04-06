@@ -26,22 +26,57 @@ function getConfig() {
 }
 
 /**
+ * Drive の ID 文字列を正規化する
+ * - URL が入っていても ID 部分を抽出
+ * - 前後の空白を除去
+ */
+function normalizeDriveId(rawId) {
+  const value = String(rawId || '').trim();
+  if (!value) {
+    throw new Error('ID が空です。スクリプトプロパティを確認してください。');
+  }
+
+  // そのままIDなら返す
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(value)) {
+    return value;
+  }
+
+  // URL から ID を抽出（folders / d / id）
+  const match = value.match(/\/(?:folders|d)\/([a-zA-Z0-9_-]{20,})/) ||
+    value.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+  if (match) {
+    return match[1];
+  }
+
+  throw new Error('Drive のID形式として解釈できません: ' + value);
+}
+
+/**
  * フォルダIDを解決する
  * - フォルダIDならそのまま返す
  * - ファイルIDが渡された場合は親フォルダを返す
  */
 function resolveFolder(folderId) {
+  const normalizedId = normalizeDriveId(folderId);
   try {
-    return DriveApp.getFolderById(folderId);
+    return DriveApp.getFolderById(normalizedId);
   } catch (folderError) {
-    const file = DriveApp.getFileById(folderId);
-    const parents = file.getParents();
-    if (!parents.hasNext()) {
-      throw new Error('親フォルダが見つかりません: ' + folderId);
+    try {
+      const file = DriveApp.getFileById(normalizedId);
+      const parents = file.getParents();
+      if (!parents.hasNext()) {
+        throw new Error('親フォルダが見つかりません: ' + normalizedId);
+      }
+      const parentFolder = parents.next();
+      log('警告: フォルダIDではなくファイルIDが指定されていたため、親フォルダを使用します: ' + parentFolder.getId());
+      return parentFolder;
+    } catch (fileError) {
+      throw new Error(
+        'フォルダID解決に失敗しました。ID=' + normalizedId +
+        ' folderError=' + folderError +
+        ' fileError=' + fileError
+      );
     }
-    const parentFolder = parents.next();
-    log('警告: フォルダIDではなくファイルIDが指定されていたため、親フォルダを使用します: ' + parentFolder.getId());
-    return parentFolder;
   }
 }
 
