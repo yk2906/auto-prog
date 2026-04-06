@@ -23,7 +23,7 @@ function setupConfig() {
   properties.setProperty('GOAL_CALENDAR_ID', 'yk050696@gmail.com');
   properties.setProperty('GOAL_CELLS_TO_CLEAR', JSON.stringify([
     [22, 39], [31, 39], [40, 39], [50, 39], [60, 39], // AM列
-    [22, 62], [31, 62], [40, 62], [50, 62], [60, 62]  // BJ列
+    [22, 52], [31, 52], [40, 52], [50, 52], [60, 52]  // AZ列
   ]));
   properties.setProperty('GOAL_DATE_CELL', JSON.stringify({row: 8, column: 5}));
   
