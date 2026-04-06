@@ -26,10 +26,30 @@ function getConfig() {
 }
 
 /**
+ * フォルダIDを解決する
+ * - フォルダIDならそのまま返す
+ * - ファイルIDが渡された場合は親フォルダを返す
+ */
+function resolveFolder(folderId) {
+  try {
+    return DriveApp.getFolderById(folderId);
+  } catch (folderError) {
+    const file = DriveApp.getFileById(folderId);
+    const parents = file.getParents();
+    if (!parents.hasNext()) {
+      throw new Error('親フォルダが見つかりません: ' + folderId);
+    }
+    const parentFolder = parents.next();
+    log('警告: フォルダIDではなくファイルIDが指定されていたため、親フォルダを使用します: ' + parentFolder.getId());
+    return parentFolder;
+  }
+}
+
+/**
  * フォルダ内の最新ファイルを取得
  */
 function getLatestFileInFolder(folderId, mimeType) {
-  const folder = DriveApp.getFolderById(folderId);
+  const folder = resolveFolder(folderId);
   const files = folder.getFilesByType(mimeType);
   
   let latestFile = null;
@@ -54,7 +74,7 @@ function getFilesInFolder(folderId, mimeType) {
   log('getFilesInFolder 開始: folderId=' + folderId + ', mimeType=' + mimeType);
   
   try {
-    const folder = DriveApp.getFolderById(folderId);
+    const folder = resolveFolder(folderId);
     log('フォルダを取得しました: ' + folder.getName());
     
     const files = folder.getFilesByType(mimeType);

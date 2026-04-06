@@ -32,7 +32,7 @@ function copyDocumentReport() {
     
     // 保存先フォルダに移動
     if (docConfig.destination_folder_id) {
-      const destFolder = DriveApp.getFolderById(docConfig.destination_folder_id);
+      const destFolder = resolveFolder(docConfig.destination_folder_id);
       copiedFile.moveTo(destFolder);
     }
     
