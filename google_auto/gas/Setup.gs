@@ -6,7 +6,7 @@ function setupConfig() {
   const properties = PropertiesService.getScriptProperties();
   
   // ドキュメントレポート設定
-  properties.setProperty('DOC_SOURCE_FOLDER_ID', '1p7mfM38-rQBOFg7CD7xVRRegYcrekhwGV9LH1iYsbN0');
+  properties.setProperty('DOC_SOURCE_FOLDER_ID', '1jA0UwCHPFDo-Nutn7m_I-DTJhk2N4wG-');
   properties.setProperty('DOC_DEST_FOLDER_ID', '12gKaJbxAjtSkCatQF0sm6vl2GLC-fvVP');
   
   // 日次レポート設定
@@ -19,7 +19,7 @@ function setupConfig() {
   properties.setProperty('DAILY_DATE_CELL', JSON.stringify({row: 8, column: 5}));
   
   // 目標管理レポート設定
-  properties.setProperty('GOAL_SOURCE_FOLDER_ID', '1AjOq1DGcyk1QIS6U7jQzaYc7m4aQeduSIDukcURHA10');
+  properties.setProperty('GOAL_SOURCE_FOLDER_ID', '1jA0UwCHPFDo-Nutn7m_I-DTJhk2N4wG-');
   properties.setProperty('GOAL_CALENDAR_ID', 'yk050696@gmail.com');
   properties.setProperty('GOAL_CELLS_TO_CLEAR', JSON.stringify([[22, 39], [31, 39], [40, 39], [50, 39], [60, 39]]));
   properties.setProperty('GOAL_DATE_CELL', JSON.stringify({row: 8, column: 5}));
