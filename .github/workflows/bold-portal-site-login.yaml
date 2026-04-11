@@ -12,7 +12,7 @@ name: Bold portal site-login
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 22 * * 5' # 毎週金曜 22:00（timezone: Asia/Tokyo）。必要に応じて変更。
+    - cron: '0 8 * * 6'    
       timezone: "Asia/Tokyo"
 
 concurrency:
