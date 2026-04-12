@@ -13,7 +13,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 8 * * 6'    
-      timezone: "Asia/Tokyo"
 
 concurrency:
   group: bold-portal-site-login
