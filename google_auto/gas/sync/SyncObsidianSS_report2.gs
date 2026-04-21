@@ -13,8 +13,10 @@ function syncMarkdownToCellReport2() {
       '### 今後の活用': 'B25',
       '### 活用実践の成果': 'B31',
     };
-    // 1番目・2番目・3番目…の見出しの「一番浅いインデント」だけを同期するセル（順にE9,E10,E11,E12）
-    const shallowCells = ['E9', 'E10', 'E11', 'E12'];
+    // 1番目・2番目…の見出しの「一番浅いインデント」だけを同期するセル（順にE9〜E13）
+    const shallowCells = ['E9', 'E10', 'E11', 'E12', 'E13'];
+    // 各 E 列と同じ行の S 列に、タイトル行の「（17分）」形式の括弧内を同期（E9↔S9, E10↔S10 …）
+    const shallowTimeCells = ['S9', 'S10', 'S11', 'S12', 'S13'];
     // ----------------
   
     try {
@@ -67,7 +69,15 @@ function syncMarkdownToCellReport2() {
         const m = l.match(/^(\s*)([-*]|\d+\.)/);
         return m ? m[1].length : -1;
       }
-      // 見出しセクションを確定: syncMap用は全行、shallow用は一番浅い行を1行ずつ順にE9,E10,E11,E12へ
+      // 全角括弧（…）または半角括弧(...) の先頭ブロック内の文字列を返す（例: 「（17分）」→「17分」）
+      function extractParenTime(text) {
+        if (!text) return '';
+        let m = text.match(/（([^）]+)）/);
+        if (m) return m[1].trim();
+        m = text.match(/\(([^)]+)\)/);
+        return m ? m[1].trim() : '';
+      }
+      // 見出しセクションを確定: syncMap用は全行、shallow用は一番浅い行を1行ずつ順にE9〜E13へ
       function flushSection(target, items, res, shallowOut) {
         if (!target || items.length === 0) return;
         const allLines = items.map(x => x.line);
@@ -79,7 +89,7 @@ function syncMarkdownToCellReport2() {
       
       let results = {};
       Object.keys(syncMap).forEach(key => results[key] = []);
-      let shallowResults = []; // 一番浅い行を1行ずつ並べた配列の配列（1番目→E9, 2番目→E10…）
+      let shallowResults = []; // 一番浅い行を1行ずつ並べた配列の配列（1番目→E9, 2番目→E10 …）
       let currentTarget = null;
       let sectionListItems = []; // { indent, line } の配列（現在見出し配下のリスト）
   
@@ -116,7 +126,12 @@ function syncMarkdownToCellReport2() {
         targetSheet.getRange(cell).setValue(data || '');
       });
       for (let i = 0; i < shallowResults.length && i < shallowCells.length; i++) {
-        targetSheet.getRange(shallowCells[i]).setValue(shallowResults[i].join('\n') || '');
+        const cellValue = shallowResults[i].join('\n') || '';
+        targetSheet.getRange(shallowCells[i]).setValue(cellValue);
+        targetSheet.getRange(shallowTimeCells[i]).setValue(extractParenTime(cellValue));
+      }
+      for (let j = shallowResults.length; j < shallowTimeCells.length; j++) {
+        targetSheet.getRange(shallowTimeCells[j]).setValue('');
       }
   
       console.log('同期完了: ' + targetFileName + ' -> ' + targetSheet.getName());
