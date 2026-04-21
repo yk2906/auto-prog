@@ -69,13 +69,23 @@ function syncMarkdownToCellReport2() {
         const m = l.match(/^(\s*)([-*]|\d+\.)/);
         return m ? m[1].length : -1;
       }
-      // 全角括弧（…）または半角括弧(...) の先頭ブロック内の文字列を返す（例: 「（17分）」→「17分」）
+      // 括弧内が「所要時間」らしいものだけを採用（例: 「（17分）」→「17分」）。説明文の「（明るさ変更・…）」は除外
+      function isDurationSegment(inner) {
+        if (!inner) return false;
+        inner = inner.trim();
+        if (!/\d/.test(inner)) return false;
+        return /(?:分|秒|時間|:)/.test(inner);
+      }
       function extractParenTime(text) {
         if (!text) return '';
-        let m = text.match(/（([^）]+)）/);
-        if (m) return m[1].trim();
-        m = text.match(/\(([^)]+)\)/);
-        return m ? m[1].trim() : '';
+        const candidates = [];
+        const re = /（([^）]+)）|\(([^)]+)\)/g;
+        let m;
+        while ((m = re.exec(text)) !== null) {
+          const inner = (m[1] || m[2] || '').trim();
+          if (isDurationSegment(inner)) candidates.push(inner);
+        }
+        return candidates.length ? candidates[candidates.length - 1] : '';
       }
       // 見出しセクションを確定: syncMap用は全行、shallow用は一番浅い行を1行ずつ順にE9〜E13へ
       function flushSection(target, items, res, shallowOut) {

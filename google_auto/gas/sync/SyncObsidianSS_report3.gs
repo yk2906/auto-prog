@@ -13,8 +13,10 @@ function syncMarkdownToCellReport3() {
       '### 今後の活用': 'B27',
       '### 活用実践の成果': 'B33',
     };
-    // 1番目・2番目・3番目…の見出しの「一番浅いインデント」だけを同期するセル（順にE9,E10,E11,E12）
-    const shallowCells = ['E9', 'E10', 'E11', 'E12'];
+    // 1番目・2番目…の見出しの「一番浅いインデント」だけを同期するセル（順にE9〜E13）
+    const shallowCells = ['E9', 'E10', 'E11', 'E12', 'E13'];
+    // 各 E 列と同じ行の S 列に、タイトル行の「（17分）」形式の括弧内を同期（E9↔S9, E10↔S10 …）
+    const shallowTimeCells = ['S9', 'S10', 'S11', 'S12', 'S13'];
     // ----------------
   
     try {
@@ -67,7 +69,25 @@ function syncMarkdownToCellReport3() {
         const m = l.match(/^(\s*)([-*]|\d+\.)/);
         return m ? m[1].length : -1;
       }
-      // 見出しセクションを確定: syncMap用は全行、shallow用は一番浅い行を1行ずつ順にE9,E10,E11,E12へ
+      // 括弧内が「所要時間」らしいものだけを採用（例: 「（17分）」→「17分」）。説明文の「（明るさ変更・…）」は除外
+      function isDurationSegment(inner) {
+        if (!inner) return false;
+        inner = inner.trim();
+        if (!/\d/.test(inner)) return false;
+        return /(?:分|秒|時間|:)/.test(inner);
+      }
+      function extractParenTime(text) {
+        if (!text) return '';
+        const candidates = [];
+        const re = /（([^）]+)）|\(([^)]+)\)/g;
+        let m;
+        while ((m = re.exec(text)) !== null) {
+          const inner = (m[1] || m[2] || '').trim();
+          if (isDurationSegment(inner)) candidates.push(inner);
+        }
+        return candidates.length ? candidates[candidates.length - 1] : '';
+      }
+      // 見出しセクションを確定: syncMap用は全行、shallow用は一番浅い行を1行ずつ順にE9〜E13へ
       function flushSection(target, items, res, shallowOut) {
         if (!target || items.length === 0) return;
         const allLines = items.map(x => x.line);
@@ -79,7 +99,7 @@ function syncMarkdownToCellReport3() {
       
       let results = {};
       Object.keys(syncMap).forEach(key => results[key] = []);
-      let shallowResults = []; // 一番浅い行を1行ずつ並べた配列の配列（1番目→E9, 2番目→E10…）
+      let shallowResults = []; // 一番浅い行を1行ずつ並べた配列の配列（1番目→E9, 2番目→E10 …）
       let currentTarget = null;
       let sectionListItems = []; // { indent, line } の配列（現在見出し配下のリスト）
   
@@ -116,7 +136,12 @@ function syncMarkdownToCellReport3() {
         targetSheet.getRange(cell).setValue(data || '');
       });
       for (let i = 0; i < shallowResults.length && i < shallowCells.length; i++) {
-        targetSheet.getRange(shallowCells[i]).setValue(shallowResults[i].join('\n') || '');
+        const cellValue = shallowResults[i].join('\n') || '';
+        targetSheet.getRange(shallowCells[i]).setValue(cellValue);
+        targetSheet.getRange(shallowTimeCells[i]).setValue(extractParenTime(cellValue));
+      }
+      for (let j = shallowResults.length; j < shallowTimeCells.length; j++) {
+        targetSheet.getRange(shallowTimeCells[j]).setValue('');
       }
   
       console.log('同期完了: ' + targetFileName + ' -> ' + targetSheet.getName());
