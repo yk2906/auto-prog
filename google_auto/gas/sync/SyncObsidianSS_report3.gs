@@ -8,10 +8,10 @@ function syncMarkdownToCellReport3() {
     const currentMonthName = (today.getMonth() + 1) + '月'; 
   
     const syncMap = {
-      '### 内容': 'D12',
-      '### 学んだこと': 'B18',
-      '### 今後の活用': 'B25',
-      '### 活用実践の成果': 'B31',
+      '### 内容': 'D14',
+      '### 学んだこと': 'B20',
+      '### 今後の活用': 'B27',
+      '### 活用実践の成果': 'B33',
     };
     // 1番目・2番目・3番目…の見出しの「一番浅いインデント」だけを同期するセル（順にE9,E10,E11,E12）
     const shallowCells = ['E9', 'E10', 'E11', 'E12'];
