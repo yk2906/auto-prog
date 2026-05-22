@@ -12,7 +12,7 @@ name: Bold portal site-login
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 14 * * 5'         
+    - cron: '30 14 * * 5'        # 毎週金曜 23:30 JST (UTC+9)
 
 concurrency:
   group: bold-portal-site-login
