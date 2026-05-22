@@ -34,6 +34,9 @@
  * 注意: 本スクリプトは「定時」後に表示されるフォームへ時刻などを入力しません。
  * 手入力や別 UI が必要な場合は、HEADED=1 で確認するか、該当 input への fill を追記してください。
  */
+// GitHub Actions は UTC 動作のため、Node.js とブラウザの両方を JST に統一する
+process.env.TZ = 'Asia/Tokyo';
+
 const { chromium } = require('playwright');
 
 const PORTAL_PAGE_A = 'https://portal.bold.ne.jp/attendance';
@@ -733,7 +736,8 @@ async function clickScheduleInWeekIncludingRunDay(page) {
   const headless = !(process.env.HEADED === '1' || process.env.HEADLESS === '0');
 
   const browser = await chromium.launch({ headless });
-  const page = await browser.newPage();
+  const context = await browser.newContext({ timezoneId: 'Asia/Tokyo' });
+  const page = await context.newPage();
 
   try {
     console.log('ログインページを開いています...');
