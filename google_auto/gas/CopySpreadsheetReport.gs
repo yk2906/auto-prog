@@ -39,7 +39,7 @@ function formatStudyTime(totalMinutes) {
 
 // 目次シートのC5～C10に最初の空き行を探してコピー実施日を記載。
 // D・E列: 6行目以降に記入する場合は1行上の値をコピー（前回の担当者等を引き継ぐため）。
-function updateTocSheet(spreadsheet) {
+function updateTocSheet(spreadsheet, studyTime) {
   const tocSheet = spreadsheet.getSheetByName('目次');
   if (!tocSheet) {
     log('目次シートが見つかりませんでした');
@@ -53,6 +53,9 @@ function updateTocSheet(spreadsheet) {
   }
   const targetRow = 5 + targetIndex;
   tocSheet.getRange(targetRow, 3).setValue(new Date()).setNumberFormat('yyyy/mm/dd');
+  if (studyTime) {
+    tocSheet.getRange(targetRow, 6).setValue(studyTime);
+  }
   if (targetRow > 5) {
     const prevValues = tocSheet.getRange(targetRow - 1, 4, 1, 2).getValues();
     tocSheet.getRange(targetRow, 4, 1, 2).setValues(prevValues);
@@ -109,16 +112,16 @@ function copySpreadsheetReport() {
           log('クリアするセルが設定されていません');
         }
 
-        if (studyTimeTotal !== null) {
-          const formattedTime = formatStudyTime(studyTimeTotal);
-          newSheet.getRange(9, 19).setValue(formattedTime);
-          log(`受講時間合計をS9に書き込みました: ${formattedTime}`);
+        const studyTimeSummary = studyTimeTotal !== null ? formatStudyTime(studyTimeTotal) : null;
+        if (studyTimeSummary !== null) {
+          newSheet.getRange(9, 19).setValue(studyTimeSummary);
+          log(`受講時間合計をS9に書き込みました: ${studyTimeSummary}`);
         }
 
         updateDate(newSheet, reportConfig.date_cell);
         log('日付を更新しました');
 
-        updateTocSheet(spreadsheet);
+        updateTocSheet(spreadsheet, studyTimeSummary);
         log(`スプレッドシート ${spreadsheetItem.name} に新しいシート '${newSheetTitle}' を作成しました`);
 
       } catch (error) {
