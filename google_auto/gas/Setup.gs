@@ -16,8 +16,8 @@ function setupConfig() {
   properties.setProperty('DAILY_CELLS_TO_CLEAR_BY_NAME', JSON.stringify({}));
   // スプレッドシート名に文字列を含む場合のクリアセル。キー=含まれる文字列（大文字小文字区別）、値=[[行,列],...]
   properties.setProperty('DAILY_CELLS_TO_CLEAR_BY_NAME_CONTAINS', JSON.stringify({
-    'Udemy受講レポート': [[9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [13, 4], [20, 2], [9, 19], [10, 19], [11, 19], [12, 19], [13, 19], [9, 24]],
-    '自主勉強会開催レポート': [[9, 5], [15, 2], [22, 2], [28, 2]]
+    'Udemy受講レポート': [[9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [13, 4], [14, 4], [20, 2], [9, 19], [10, 19], [11, 19], [12, 19], [13, 19], [9, 24]],
+    '自主勉強会開催レポート': [[9, 5], [10, 4], [15, 2], [22, 2], [28, 2]]
   }));
   properties.setProperty('DAILY_DATE_CELL', JSON.stringify({row: 8, column: 5}));
   
