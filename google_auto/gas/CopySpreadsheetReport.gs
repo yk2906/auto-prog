@@ -22,6 +22,21 @@ function resolveCellsToClear(reportConfig, spreadsheetName) {
   return reportConfig.cells_to_clear;
 }
 
+function parseStudyTime(text) {
+  const s = String(text || '');
+  const hourMatch = s.match(/(\d+)時間/);
+  const minMatch = s.match(/(\d+)分/);
+  return (hourMatch ? parseInt(hourMatch[1]) : 0) * 60 + (minMatch ? parseInt(minMatch[1]) : 0);
+}
+
+function formatStudyTime(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}分`;
+  if (minutes === 0) return `${hours}時間`;
+  return `${hours}時間${minutes}分`;
+}
+
 // 目次シートのC5～C10に最初の空き行を探してコピー実施日を記載。
 // D・E列: 6行目以降に記入する場合は1行上の値をコピー（前回の担当者等を引き継ぐため）。
 function updateTocSheet(spreadsheet) {
@@ -79,6 +94,12 @@ function copySpreadsheetReport() {
         newSheet.setName(newSheetTitle);
         log(`シートを複製しました: ${newSheetTitle}`);
 
+        // Udemy受講レポートはクリア前にS9~S13の受講時間を合算しておく
+        const isUdemy = spreadsheetItem.name.includes('Udemy受講レポート');
+        const studyTimeTotal = isUdemy
+          ? [9, 10, 11, 12, 13].reduce((sum, row) => sum + parseStudyTime(newSheet.getRange(row, 19).getValue()), 0)
+          : null;
+
         const cellsToClear = resolveCellsToClear(reportConfig, spreadsheetItem.name);
         if (cellsToClear && cellsToClear.length > 0) {
           log(`クリアするセル数: ${cellsToClear.length}`);
@@ -86,6 +107,12 @@ function copySpreadsheetReport() {
           log('セルをクリアしました');
         } else {
           log('クリアするセルが設定されていません');
+        }
+
+        if (studyTimeTotal !== null) {
+          const formattedTime = formatStudyTime(studyTimeTotal);
+          newSheet.getRange(9, 19).setValue(formattedTime);
+          log(`受講時間合計をS9に書き込みました: ${formattedTime}`);
         }
 
         updateDate(newSheet, reportConfig.date_cell);
