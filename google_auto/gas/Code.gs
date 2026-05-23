@@ -173,6 +173,21 @@ function formatStudyTime(totalMinutes) {
   return `${hours}時間${minutes}分`;
 }
 
+// 目次シートのC5~C10から今月の日付が入っている行を探し、F列に受講時間合計を書き込む
+function writeTocStudyTime(ss, studyTime) {
+  const tocSheet = ss.getSheetByName('目次');
+  if (!tocSheet) return;
+  const today = new Date();
+  const values = tocSheet.getRange(5, 3, 6, 1).getValues();
+  for (let i = 0; i < values.length; i++) {
+    const val = values[i][0];
+    if (val instanceof Date && val.getMonth() === today.getMonth() && val.getFullYear() === today.getFullYear()) {
+      tocSheet.getRange(5 + i, 6).setValue(studyTime);
+      return;
+    }
+  }
+}
+
 /**
  * ログ出力
  */

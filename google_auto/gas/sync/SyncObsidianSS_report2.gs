@@ -148,9 +148,11 @@ function syncMarkdownToCellReport2() {
         collectedTimes.push('');
       }
 
-      // S9~S13の受講時間を合算してX9に書き込む
+      // S9~S13の受講時間を合算してX9と目次シートのF列に書き込む
       const totalMinutes = collectedTimes.reduce((sum, t) => sum + parseStudyTime(t), 0);
-      targetSheet.getRange('X9').setValue(formatStudyTime(totalMinutes));
+      const formattedTotal = formatStudyTime(totalMinutes);
+      targetSheet.getRange('X9').setValue(formattedTotal);
+      writeTocStudyTime(ss, formattedTotal);
 
       console.log('同期完了: ' + targetFileName + ' -> ' + targetSheet.getName());
   
