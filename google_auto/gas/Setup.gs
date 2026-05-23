@@ -14,8 +14,8 @@ function setupConfig() {
   properties.setProperty('DAILY_CELLS_TO_CLEAR', JSON.stringify([[9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [13, 4], [20, 2], [9, 19], [10, 19], [11, 19], [12, 19], [13, 19], [9, 24]]));
   // スプレッドシート名ごとにクリアするセルを変える場合。キー=ファイル名（完全一致）、値=[[行,列],...]
   properties.setProperty('DAILY_CELLS_TO_CLEAR_BY_NAME', JSON.stringify({}));
-  // スプレッドシート名に文字列を含む場合のクリアセル。キー=含まれる文字列（大文字小文字区別）、値=[[行,列],...]。D12,B18,B25,B31→[[12,4],[18,2],[25,2],[31,2]]
-  properties.setProperty('DAILY_CELLS_TO_CLEAR_BY_NAME_CONTAINS', JSON.stringify({'Udemy受講レポート': [[12, 4], [18, 2], [25, 2], [31, 2]]}));
+  // スプレッドシート名に文字列を含む場合のクリアセル。キー=含まれる文字列（大文字小文字区別）、値=[[行,列],...]
+  properties.setProperty('DAILY_CELLS_TO_CLEAR_BY_NAME_CONTAINS', JSON.stringify({'Udemy受講レポート': [[9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [13, 4], [20, 2], [9, 19], [10, 19], [11, 19], [12, 19], [13, 19], [9, 24]]}));
   properties.setProperty('DAILY_DATE_CELL', JSON.stringify({row: 8, column: 5}));
   
   // 目標管理レポート設定
