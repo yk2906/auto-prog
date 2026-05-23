@@ -158,6 +158,21 @@ function updateDate(sheet, dateCell) {
   }
 }
 
+function parseStudyTime(text) {
+  const s = String(text || '');
+  const hourMatch = s.match(/(\d+)時間/);
+  const minMatch = s.match(/(\d+)分/);
+  return (hourMatch ? parseInt(hourMatch[1]) : 0) * 60 + (minMatch ? parseInt(minMatch[1]) : 0);
+}
+
+function formatStudyTime(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}分`;
+  if (minutes === 0) return `${hours}時間`;
+  return `${hours}時間${minutes}分`;
+}
+
 /**
  * ログ出力
  */

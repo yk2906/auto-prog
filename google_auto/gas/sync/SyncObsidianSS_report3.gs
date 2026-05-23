@@ -135,15 +135,23 @@ function syncMarkdownToCellReport3() {
         const data = results[heading].join('\n');
         targetSheet.getRange(cell).setValue(data || '');
       });
+      const collectedTimes = [];
       for (let i = 0; i < shallowResults.length && i < shallowCells.length; i++) {
         const cellValue = shallowResults[i].join('\n') || '';
         targetSheet.getRange(shallowCells[i]).setValue(cellValue);
-        targetSheet.getRange(shallowTimeCells[i]).setValue(extractParenTime(cellValue));
+        const timeStr = extractParenTime(cellValue);
+        targetSheet.getRange(shallowTimeCells[i]).setValue(timeStr);
+        collectedTimes.push(timeStr);
       }
       for (let j = shallowResults.length; j < shallowTimeCells.length; j++) {
         targetSheet.getRange(shallowTimeCells[j]).setValue('');
+        collectedTimes.push('');
       }
-  
+
+      // S9~S13の受講時間を合算してX9に書き込む
+      const totalMinutes = collectedTimes.reduce((sum, t) => sum + parseStudyTime(t), 0);
+      targetSheet.getRange('X9').setValue(formatStudyTime(totalMinutes));
+
       console.log('同期完了: ' + targetFileName + ' -> ' + targetSheet.getName());
   
     } catch (e) {
