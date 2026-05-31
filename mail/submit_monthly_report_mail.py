@@ -14,9 +14,9 @@ def compose_mail_with_direct_drive():
         result = subprocess.run(["wslpath", "-w", wsl_path], capture_output=True, text=True)
         win_file_paths.append(result.stdout.strip())
 
-    to_email = "y_kohama@bold.ne.jp"
+    to_email = "jinji@bold.ne.jp"
     # Cc アドレス（複数追加可。不要な場合は空リストにする）
-    cc_emails = ["y_kohama@bold.ne.jp"]
+    cc_emails = ["e_tsunashima@bold.ne.jp"]
     subject = "【公式レポート提出】1495・小濵佑斗"
     body = "経営戦略本部　管理部各位\n\nお疲れ様です。\n\n今月のABC目標に関するレポートを提出致します。\n・Udemy受講レポート（2つ）\n・自主勉強会開催レポート\n\n以上、よろしくお願いします。"
 
