@@ -1,36 +1,43 @@
 /**
- * 初期設定: スクリプトプロパティに設定を保存
- * config.jsonの内容を基に設定してください
+ * 設定値を返す。この関数を編集すれば clasp push だけで反映される。
+ */
+function getConfigValues() {
+  const sharedFolderId = '1jA0UwCHPFDo-Nutn7m_I-DTJhk2N4wG-';
+  return {
+    document_report: {
+      source_folder_id: sharedFolderId,
+      destination_folder_id: sharedFolderId
+    },
+    daily_report: {
+      source_folder_id: '1fkouegK9E7AlonDmaqQSaZCCnjJe1eBB',
+      cells_to_clear: [[9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [13, 4], [20, 2], [9, 19], [10, 19], [11, 19], [12, 19], [13, 19], [9, 24]],
+      // スプレッドシート名ごとにクリアするセルを変える場合。キー=ファイル名（完全一致）、値=[[行,列],...]
+      cells_to_clear_by_name: {},
+      // スプレッドシート名に文字列を含む場合のクリアセル。キー=含まれる文字列（大文字小文字区別）、値=[[行,列],...]
+      cells_to_clear_by_name_contains: {
+        'Udemy受講レポート': [[9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [14, 5], [13, 4], [14, 4], [15, 4], [21, 2], [28, 2], [34, 2], [9, 19], [10, 19], [11, 19], [12, 19], [13, 19], [14, 19], [9, 24]],
+        '自主勉強会開催レポート': [[9, 5], [10, 4], [15, 2], [22, 2], [28, 2]]
+      },
+      date_cell: {row: 8, column: 5}
+    },
+    goal_management_report: {
+      source_folder_id: sharedFolderId,
+      calendar_id: 'yk050696@gmail.com',
+      cells_to_clear: [
+        [22, 39], [31, 39], [40, 39], [50, 39], [60, 39], // AM列
+        [22, 52], [31, 52], [40, 52], [50, 52], [60, 52]  // AZ列
+      ],
+      date_cell: {row: 8, column: 5}
+    }
+  };
+}
+
+/**
+ * 初回のみ実行: ScriptProperties への移行前の互換用。現在は getConfigValues() で代替。
+ * トリガー設定は setupTriggers() を使用してください。
  */
 function setupConfig() {
-  const properties = PropertiesService.getScriptProperties();
-  
-  // ドキュメントレポート設定
-  properties.setProperty('DOC_SOURCE_FOLDER_ID', '1jA0UwCHPFDo-Nutn7m_I-DTJhk2N4wG-');
-  properties.setProperty('DOC_DEST_FOLDER_ID', '1jA0UwCHPFDo-Nutn7m_I-DTJhk2N4wG-');
-  
-  // 日次レポート設定
-  properties.setProperty('DAILY_SOURCE_FOLDER_ID', '1fkouegK9E7AlonDmaqQSaZCCnjJe1eBB');
-  properties.setProperty('DAILY_CELLS_TO_CLEAR', JSON.stringify([[9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [13, 4], [20, 2], [9, 19], [10, 19], [11, 19], [12, 19], [13, 19], [9, 24]]));
-  // スプレッドシート名ごとにクリアするセルを変える場合。キー=ファイル名（完全一致）、値=[[行,列],...]
-  properties.setProperty('DAILY_CELLS_TO_CLEAR_BY_NAME', JSON.stringify({}));
-  // スプレッドシート名に文字列を含む場合のクリアセル。キー=含まれる文字列（大文字小文字区別）、値=[[行,列],...]
-  properties.setProperty('DAILY_CELLS_TO_CLEAR_BY_NAME_CONTAINS', JSON.stringify({
-    'Udemy受講レポート': [[9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [14, 5], [13, 4], [14, 4], [15, 4], [21, 2], [28, 2], [34, 2], [9, 19], [10, 19], [11, 19], [12, 19], [13, 19], [14, 19], [9, 24]],
-    '自主勉強会開催レポート': [[9, 5], [10, 4], [15, 2], [22, 2], [28, 2]]
-  }));
-  properties.setProperty('DAILY_DATE_CELL', JSON.stringify({row: 8, column: 5}));
-  
-  // 目標管理レポート設定
-  properties.setProperty('GOAL_SOURCE_FOLDER_ID', '1jA0UwCHPFDo-Nutn7m_I-DTJhk2N4wG-');
-  properties.setProperty('GOAL_CALENDAR_ID', 'yk050696@gmail.com');
-  properties.setProperty('GOAL_CELLS_TO_CLEAR', JSON.stringify([
-    [22, 39], [31, 39], [40, 39], [50, 39], [60, 39], // AM列
-    [22, 52], [31, 52], [40, 52], [50, 52], [60, 52]  // AZ列
-  ]));
-  properties.setProperty('GOAL_DATE_CELL', JSON.stringify({row: 8, column: 5}));
-  
-  Logger.log('設定を保存しました');
+  Logger.log('setupConfig は不要になりました。getConfigValues() が直接参照されます。');
 }
 
 /**

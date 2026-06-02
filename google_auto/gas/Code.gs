@@ -1,28 +1,8 @@
 /**
- * 設定をスクリプトプロパティから取得
+ * 設定を取得。値の変更は Setup.gs の getConfigValues() を編集し clasp push するだけでよい。
  */
 function getConfig() {
-  const properties = PropertiesService.getScriptProperties();
-  const sharedSourceFolderId = properties.getProperty('DOC_SOURCE_FOLDER_ID');
-  return {
-    document_report: {
-      source_folder_id: sharedSourceFolderId,
-      destination_folder_id: properties.getProperty('DOC_DEST_FOLDER_ID')
-    },
-    daily_report: {
-      source_folder_id: properties.getProperty('DAILY_SOURCE_FOLDER_ID'),
-      cells_to_clear: JSON.parse(properties.getProperty('DAILY_CELLS_TO_CLEAR') || '[]'),
-      cells_to_clear_by_name: JSON.parse(properties.getProperty('DAILY_CELLS_TO_CLEAR_BY_NAME') || '{}'),
-      cells_to_clear_by_name_contains: JSON.parse(properties.getProperty('DAILY_CELLS_TO_CLEAR_BY_NAME_CONTAINS') || '{}'),
-      date_cell: JSON.parse(properties.getProperty('DAILY_DATE_CELL') || '{}')
-    },
-    goal_management_report: {
-      source_folder_id: sharedSourceFolderId,
-      calendar_id: properties.getProperty('GOAL_CALENDAR_ID'),
-      cells_to_clear: JSON.parse(properties.getProperty('GOAL_CELLS_TO_CLEAR') || '[]'),
-      date_cell: JSON.parse(properties.getProperty('GOAL_DATE_CELL') || '{}')
-    }
-  };
+  return getConfigValues();
 }
 
 /**
