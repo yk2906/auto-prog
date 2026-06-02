@@ -14,9 +14,9 @@ function syncMarkdownToCellReport3() {
       '### 活用実践の成果': 'B33',
     };
     // 1番目・2番目…の見出しの「一番浅いインデント」だけを同期するセル（順にE9〜E13）
-    const shallowCells = ['E9', 'E10', 'E11', 'E12', 'E13'];
+    const shallowCells = ['E9', 'E10', 'E11', 'E12', 'E13', 'E14'];
     // 各 E 列と同じ行の S 列に、タイトル行の「（17分）」形式の括弧内を同期（E9↔S9, E10↔S10 …）
-    const shallowTimeCells = ['S9', 'S10', 'S11', 'S12', 'S13'];
+    const shallowTimeCells = ['S9', 'S10', 'S11', 'S12', 'S13', 'S14'];
     // ----------------
   
     try {
