@@ -87,14 +87,16 @@ function syncMarkdownToCellReport2() {
         }
         return candidates.length ? candidates[candidates.length - 1] : '';
       }
-      // 見出しセクションを確定: syncMap用は全行、shallow用は一番浅い行を1行ずつ順にE9〜E13へ
+      // 見出しセクションを確定: syncMap用は全行、shallow用は「### 内容」のみ一番浅い行を1行ずつ順にE9〜E14へ
       function flushSection(target, items, res, shallowOut) {
         if (!target || items.length === 0) return;
         const allLines = items.map(x => x.line);
         res[target] = (res[target] || []).concat(allLines);
-        const minIndent = Math.min.apply(null, items.map(x => x.indent));
-        const shallow = items.filter(x => x.indent === minIndent).map(x => x.line);
-        shallow.forEach(function(line) { shallowOut.push([line]); }); // 1行ずつ別セルに振り分け
+        if (target === '### 内容') {
+          const minIndent = Math.min.apply(null, items.map(x => x.indent));
+          const shallow = items.filter(x => x.indent === minIndent).map(x => x.line);
+          shallow.forEach(function(line) { shallowOut.push([line]); }); // 1行ずつ別セルに振り分け
+        }
       }
       
       let results = {};
@@ -143,7 +145,8 @@ function syncMarkdownToCellReport2() {
         targetSheet.getRange(shallowTimeCells[i]).setValue(timeStr);
         collectedTimes.push(timeStr);
       }
-      for (let j = shallowResults.length; j < shallowTimeCells.length; j++) {
+      for (let j = shallowResults.length; j < shallowCells.length; j++) {
+        targetSheet.getRange(shallowCells[j]).setValue('');
         targetSheet.getRange(shallowTimeCells[j]).setValue('');
         collectedTimes.push('');
       }
