@@ -157,6 +157,20 @@ function syncMarkdownToCellReport3() {
       targetSheet.getRange('X9').setValue(formattedTotal);
       writeTocStudyTime(ss, formattedTotal);
 
+      // 過去シートのX9が未計算（空）の場合、S9〜S14から合算して書き込む
+      const allSheetsForBackfill = ss.getSheets();
+      for (let k = 0; k < allSheetsForBackfill.length; k++) {
+        const sheet = allSheetsForBackfill[k];
+        if (sheet.getName() === targetSheet.getName()) continue;
+        const existingX9 = sheet.getRange('X9').getValue();
+        if (existingX9 !== '' && existingX9 !== null && existingX9 !== 0) continue;
+        const backfillTimes = shallowTimeCells.map(cell => sheet.getRange(cell).getValue());
+        const backfillTotal = backfillTimes.reduce((sum, t) => sum + parseStudyTime(String(t)), 0);
+        if (backfillTotal > 0) {
+          sheet.getRange('X9').setValue(formatStudyTime(backfillTotal));
+        }
+      }
+
       console.log('同期完了: ' + targetFileName + ' -> ' + targetSheet.getName());
   
     } catch (e) {
