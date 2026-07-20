@@ -29,6 +29,7 @@
  *   AFTER_UPDATE_MS              「更新」押下後の待機ミリ秒（既定: 10000。0 で無効）
  *   SCHEDULE_APPLY_BUTTON_NAME   行の「申請」ボタン表示名（既定: 申請）
  *   EXPENSE_ACCORDION_LABEL      モーダル内アコーディオンの見出しテキスト（既定: 交通費 1）
+ *   LEGACY_LOGIN_LINK_NAME       ログインページの遷移リンク表示名（既定: 従来のログインはこちら）
  */
 // ローカルおよび GitHub Actions (UTC) の両環境で JST として動作させる
 process.env.TZ = 'Asia/Tokyo';
@@ -59,6 +60,14 @@ function sleep(ms) {
 
 async function waitForNetworkIdle(page) {
   await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
+}
+
+/** 新UIのログインページには「従来のログインはこちら」リンクがあり、押下後に email/password フォームが表示される */
+async function clickLegacyLoginLink(page) {
+  const linkName = process.env.LEGACY_LOGIN_LINK_NAME?.trim() || '従来のログインはこちら';
+  const link = page.getByRole('button', { name: linkName }).or(page.getByText(linkName)).first();
+  await link.waitFor({ state: 'visible', timeout: 15_000 });
+  await link.click();
 }
 
 /** サイトごとに input 構造が異なる場合はこの関数を書き換える */
@@ -599,6 +608,10 @@ async function clickScheduleInWeekIncludingRunDay(page) {
   try {
     console.log('ログインページを開いています...');
     await page.goto(loginUrl, { waitUntil: 'domcontentloaded' });
+
+    console.log('「従来のログインはこちら」を押下します...');
+    await clickLegacyLoginLink(page);
+    await waitForNetworkIdle(page);
 
     await fillEmailAndPassword(page, email, password);
 
