@@ -526,7 +526,16 @@ async function clickScheduleInWeekIncludingRunDay(page) {
   );
 
   const items = page.locator(selector);
-  await items.first().waitFor({ state: 'visible', timeout: 30_000 });
+  console.log(`日付要素の待機を開始します（現在のURL: ${page.url()} / タイトル: ${await page.title()}）`);
+  try {
+    await items.first().waitFor({ state: 'visible', timeout: 30_000 });
+  } catch (err) {
+    const bodySnippet = (await page.locator('body').innerText().catch(() => '')).slice(0, 500);
+    console.error(
+      `日付要素の待機に失敗しました。現在のURL: ${page.url()} / タイトル: ${await page.title()}\n本文の先頭:\n${bodySnippet}`,
+    );
+    throw err;
+  }
 
   const n = await items.count();
   const candidates = [];
@@ -618,17 +627,26 @@ async function clickScheduleInWeekIncludingRunDay(page) {
     console.log('ログインを送信します...');
     await page.getByRole('button', { name: loginButtonName }).click();
 
+    // ログイン処理は非同期でセッション確立に時間がかかることがあるため、
+    // ログインURLから実際に離脱するまで（networkidle だけに頼らず）待つ
+    await page
+      .waitForURL((url) => url.toString() !== loginUrl, { timeout: 20_000 })
+      .catch(() => {
+        console.warn('ログイン後もURLがログインページのままです（未認証の可能性があります）');
+      });
     await waitForNetworkIdle(page);
 
-    console.log('ログイン後のタイトル:', await page.title());
+    console.log(`ログイン後のURL: ${page.url()} / タイトル: ${await page.title()}`);
 
     console.log('遷移:', PORTAL_PAGE_A);
     await page.goto(PORTAL_PAGE_A, { waitUntil: 'domcontentloaded' });
     await waitForNetworkIdle(page);
+    console.log(`遷移後のURL: ${page.url()}`);
 
     console.log('遷移:', PORTAL_PAGE_B);
     await page.goto(PORTAL_PAGE_B, { waitUntil: 'domcontentloaded' });
     await waitForNetworkIdle(page);
+    console.log(`遷移後のURL: ${page.url()}`);
 
     await clickScheduleInWeekIncludingRunDay(page);
 
