@@ -15,9 +15,9 @@
  *   LOGIN_EMAIL=you@example.com \
  *   LOGIN_PASSWORD=secret \
  *   HEADED=1 \
- *   node playwright-test/site-login.js
+ *   node site-login/site-login.js
  *
- * .env を使う例: set -a && source playwright-test/.env && set +a && node playwright-test/site-login.js
+ * .env を使う例: set -a && source site-login/.env && set +a && node site-login/site-login.js
  *
  * 環境変数（任意）:
  *   LOGIN_BUTTON_NAME            ログインボタンの表示名（既定: Login）
