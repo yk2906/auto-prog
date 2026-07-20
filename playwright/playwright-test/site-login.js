@@ -2,7 +2,10 @@
  * メール＋パスワードでログインし、Bold ポータルの勤怠一覧を処理する。
  *
  * ログイン後: PORTAL_PAGE_A → PORTAL_PAGE_B
- * PAGE_B で日付要素を読み、実行日を含む直近7日間の行のみ処理（未来日は除外）。
+ * PAGE_B で日付要素を読み、以下を処理対象にする（未来日は除外）。
+ *   ・実行日を含む直近7日間の行（既登録かどうかに関わらず対象）
+ *   ・それより過去の行のうち、休日（土日）・公休（区分セレクトが public_holiday）以外で、
+ *     出退勤が 00:00 のまま（未更新）の行
  * 月・水: 「定時」前にテレワークチェックをオン。
  * 火・木・金: 「定時」前に申請→交通費アコーディオン→テンプレートを使用→保存。
  * 全日: 「定時」→「更新」。
@@ -514,6 +517,38 @@ function isTuesdayThursdayFriday(d) {
   return wd === 2 || wd === 4 || wd === 5;
 }
 
+function isWeekend(d) {
+  const wd = d.getDay();
+  return wd === 0 || wd === 6;
+}
+
+/**
+ * 日付段落 p の実要素を直接掴み、祖先の tr を辿って区分（公休など）と未更新判定をまとめて取得する。
+ * items.nth(i) をロケータのまま filter({ has }) で再検索すると、テーブルの描画状況によって
+ * ページ全体でのインデックス解決がずれることがあるため、elementHandle 経由で確実に同一要素から辿る。
+ * @returns {Promise<{holidayValue: string|null, isUnregistered: boolean} | null>}
+ */
+async function inspectRowForDateParagraph(pLocator) {
+  const handle = await pLocator.elementHandle();
+  if (!handle) return null;
+  try {
+    return await handle.evaluate((el) => {
+      const tr = el.closest('tr');
+      if (!tr) return null;
+      const select = tr.querySelector('select');
+      const holidayValue = select ? select.value : null;
+      const cells = [...tr.querySelectorAll('td, [role="gridcell"]')];
+      const times = cells
+        .map((c) => (c.textContent || '').trim())
+        .filter((t) => /^\d{1,2}:\d{2}$/.test(t));
+      const isUnregistered = times.length > 0 && times.every((t) => t === '00:00');
+      return { holidayValue, isUnregistered };
+    });
+  } finally {
+    await handle.dispose();
+  }
+}
+
 async function clickScheduleInWeekIncludingRunDay(page) {
   const selector = process.env.DATE_PARAGRAPH_SELECTOR?.trim() || DEFAULT_DATE_PARAGRAPH_SELECTOR;
   const scheduleCtx = getScheduleYearMonth();
@@ -549,15 +584,44 @@ async function clickScheduleInWeekIncludingRunDay(page) {
       continue;
     }
     const t = parsed.getTime();
-    if (t >= windowStart.getTime() && t <= windowEnd.getTime()) {
-      candidates.push({ i, date: parsed, text });
+    if (t > windowEnd.getTime()) continue; // 未来日は対象外
+
+    if (t >= windowStart.getTime()) {
+      const windowInfo = await inspectRowForDateParagraph(p);
+      const isPublicHoliday = windowInfo?.holidayValue === 'public_holiday';
+      candidates.push({ i, date: parsed, text, isPublicHoliday });
       console.log(`日程（7日以内の候補）: "${text}" → ${parsed.toLocaleDateString('ja-JP')}`);
+      continue;
+    }
+
+    // 7日間より過去の日程は、休日・祝日以外かつ未更新（出退勤が 00:00 のまま）の場合のみ追加対象にする
+    if (isWeekend(parsed)) {
+      console.log(`日程（過去日・スキップ: 土日）: "${text}"`);
+      continue;
+    }
+
+    const info = await inspectRowForDateParagraph(p);
+    if (!info) {
+      console.log(`日程（過去日・スキップ: 行が特定できません）: "${text}"`);
+      continue;
+    }
+
+    if (info.holidayValue === 'public_holiday') {
+      console.log(`日程（過去日・スキップ: 公休）: "${text}"`);
+      continue;
+    }
+
+    if (info.isUnregistered) {
+      candidates.push({ i, date: parsed, text, isPublicHoliday: false });
+      console.log(`日程（未更新のため追加）: "${text}" → ${parsed.toLocaleDateString('ja-JP')}`);
+    } else {
+      console.log(`日程（過去日・スキップ: 登録済みと判定）: "${text}"`);
     }
   }
 
   if (candidates.length === 0) {
     throw new Error(
-      '実行日を含む直近7日間に該当する日程が1件もありません。表示テキストの形式かセレクタ（DATE_PARAGRAPH_SELECTOR）を確認してください。',
+      '対象となる日程が1件もありません。表示テキストの形式かセレクタ（DATE_PARAGRAPH_SELECTOR）を確認してください。',
     );
   }
 
@@ -573,9 +637,13 @@ async function clickScheduleInWeekIncludingRunDay(page) {
   for (const c of candidates) {
     const rowParagraph = items.nth(c.i);
     if (isMondayOrWednesday(c.date)) {
-      console.log(`月・水: 「定時」の前にチェック — "${c.text}"`);
-      await ensureRowChakraCheckboxCheckedNearDateParagraph(rowParagraph);
-      await waitForNetworkIdle(page);
+      if (c.isPublicHoliday) {
+        console.log(`月・水: 公休のためテレワークチェックをスキップ — "${c.text}"`);
+      } else {
+        console.log(`月・水: 「定時」の前にチェック — "${c.text}"`);
+        await ensureRowChakraCheckboxCheckedNearDateParagraph(rowParagraph);
+        await waitForNetworkIdle(page);
+      }
     }
     if (isTuesdayThursdayFriday(c.date)) {
       console.log(`火・木・金: 申請→交通費→テンプレート→保存 — "${c.text}"`);
