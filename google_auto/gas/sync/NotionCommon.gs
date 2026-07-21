@@ -63,16 +63,22 @@ function findNotionPageIdByTitle(title) {
 }
 
 /**
- * NotionのページURL・共有リンク・素のIDのいずれを渡されても、32桁のハイフン無しIDを抽出する。
- * 例: https://app.notion.com/p/7-3a4b5b5ab776800eb7f6e9c57bbfb233 → 3a4b5b5ab776800eb7f6e9c57bbfb233
+ * NotionのページURL・共有リンク・素のID（ハイフン有無どちらも）を渡されても、IDを抽出する。
+ * - Notion API が返す block.id はハイフン付きUUID形式（例: 3a4b5b5a-b776-800e-b7f6-e9c57bbfb233）
+ * - ページURLに含まれるIDはハイフン無しの32桁（例: .../p/7-3a4b5b5ab776800eb7f6e9c57bbfb233）
+ * の両方に対応する。
  */
 function normalizeNotionId(rawIdOrUrl) {
   const value = String(rawIdOrUrl || '').trim();
-  const match = value.match(/[0-9a-fA-F]{32}/);
-  if (!match) {
+  const dashedMatch = value.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+  if (dashedMatch) {
+    return dashedMatch[0];
+  }
+  const plainMatch = value.match(/[0-9a-fA-F]{32}/);
+  if (!plainMatch) {
     throw new Error('Notion のページID/URLとして解釈できません: ' + value);
   }
-  return match[0];
+  return plainMatch[0];
 }
 
 /**

@@ -49,8 +49,9 @@ function syncNotionToCellReport2() {
     }
     if (!targetSheet) throw new Error('名前に「' + currentMonthName + '」を含むシートが見つかりません。');
 
-    // 3. 親ページ配下から同名のNotionページを取得し、Markdown風の行配列に変換
-    const notionPageId = findNotionPageIdUnderParent(notionRootPageUrl, targetName);
+    // 3. 親ページ配下の「今月」フォルダを特定し、その配下から同名のNotionページを取得
+    const notionMonthPageId = findNotionPageIdUnderParent(notionRootPageUrl, currentMonthName);
+    const notionPageId = findNotionPageIdUnderParent(notionMonthPageId, targetName);
     const lines = fetchNotionPageAsLines(notionPageId);
 
     // 4. 見出し単位で抽出
