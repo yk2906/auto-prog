@@ -12,8 +12,7 @@ function syncNotionToCellReport4() {
   // この親ページ配下から同名のページを探す（親ページを開いてURLをコピーして設定）
   const notionRootPageUrl = 'https://app.notion.com/p/25-3a4b5b5ab776805d8e1de70ebb53a430';
 
-  const today = new Date();
-  const currentMonthName = (today.getMonth() + 1) + '月';
+  const currentMonthName = (new Date().getMonth() + 1) + '月';
 
   const syncMap = {
     '### 内容': 'D10',
@@ -24,47 +23,19 @@ function syncNotionToCellReport4() {
   // ----------------
 
   try {
-    // 1. スプレッドシートを対象フォルダ配下で名前検索
-    const ssFiles = DriveApp.getFolderById(spreadsheetFolderId).getFilesByName(targetName);
-    let ssFile = null;
-    while (ssFiles.hasNext()) {
-      const file = ssFiles.next();
-      if (file.getMimeType() === MimeType.GOOGLE_SHEETS) {
-        ssFile = file;
-        break;
-      }
-    }
-    if (!ssFile) throw new Error('スプレッドシート「' + targetName + '」が見つかりません。');
-    const ss = SpreadsheetApp.open(ssFile);
+    const ss = findSpreadsheetByName(targetName, spreadsheetFolderId);
+    const targetSheet = findSheetByMonthName(ss, currentMonthName);
 
-    // 2. 「○月」を含むシートを自動で探す
-    const allSheets = ss.getSheets();
-    let targetSheet = null;
-    for (let i = 0; i < allSheets.length; i++) {
-      if (allSheets[i].getName().indexOf(currentMonthName) !== -1) {
-        targetSheet = allSheets[i];
-        break;
-      }
-    }
-    if (!targetSheet) throw new Error('名前に「' + currentMonthName + '」を含むシートが見つかりません。');
-
-    // 3. 親ページ配下の「今月」フォルダを特定し、その配下から同名のNotionページを取得
+    // 親ページ配下の「今月」フォルダを特定し、その配下から同名のNotionページを取得
     const notionMonthPageId = findNotionPageIdUnderParent(notionRootPageUrl, currentMonthName);
     const notionPageId = findNotionPageIdUnderParent(notionMonthPageId, targetName);
     const lines = fetchNotionPageAsLines(notionPageId);
 
-    // 4. 見出し単位で抽出（このレポートには「一番浅いインデント」抽出は無い）
+    // このレポートには「一番浅いインデント」抽出は無い
     const parsed = buildSyncResultsFromLines(lines, syncMap, null);
-    const results = parsed.results;
-
-    // 5. 書き込み
-    Object.keys(syncMap).forEach(heading => {
-      const cell = syncMap[heading];
-      targetSheet.getRange(cell).setValue(results[heading].join('\n') || '');
-    });
+    writeSimpleReport(targetSheet, syncMap, parsed.results);
 
     console.log('同期完了(Notion): ' + targetName + ' -> ' + targetSheet.getName());
-
   } catch (e) {
     console.error(e.toString());
   }

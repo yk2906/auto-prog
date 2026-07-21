@@ -14,11 +14,12 @@
 
 ### その他のスクリプト（各ファイル内の定数・設定を編集して利用）
 
-- `ConvertSheetsToExcel.gs`: 指定フォルダ内の Google スプレッドシートを xlsx として別フォルダへ保存（`convertSheetsToExcel()`。ソース／出力フォルダ ID はファイル内）
+- `ConvertDocsToWord.gs` / `ConvertSheetsToExcel.gs`: 指定フォルダ内の Google ドキュメント／スプレッドシートを docx／xlsx として別フォルダへ保存（`convertDocsToWord()` / `convertSheetsToExcel()`。ソース／出力フォルダ ID はファイル内。変換処理本体は `Code.gs` の `convertFilesInFolders()` を共通利用）
+- `sync/SyncCommon.gs`: Obsidian版・Notion版どちらのレポート同期スクリプトからも使う共通処理（Markdown風の行配列を見出し単位で抽出する `buildSyncResultsFromLines()`、スプレッドシート／当月シートの検索、セルへの書き込みロジックなど）
 - `sync/SyncObsidianSS_report2.gs`: Markdown と同名のスプレッドシートの当月シートへ見出し単位で同期（`syncMarkdownToCellReport2()`）
 - `sync/SyncObsidianSS_report3.gs`: 同上（項番3用、`syncMarkdownToCellReport3()`）
 - `sync/SyncObsidianSS_report4.gs`: 同上（自主勉強会レポート用、`syncMarkdownToCellReport4()`）
-- `sync/NotionCommon.gs`: Notion連携の共通処理（トークン取得、タイトルでのページ検索、ブロック取得とMarkdown風行への変換、見出し単位の抽出ロジック）
+- `sync/NotionCommon.gs`: Notion API 固有の処理（トークン取得、親ページ配下でのタイトル検索、ブロック・データベース行の取得とMarkdown風行への変換、デバッグ用のツリー表示）
 - `sync/SyncNotionSS_report2.gs` / `_report3.gs` / `_report4.gs`: 上記Obsidian版と同じセルマッピングで、同期元をNotionページに差し替えた版（`syncNotionToCellReport2/3/4()`）。Obsidian版と共存し、どちらも独立して実行可能
 - `objective_sync/objective_sync.gs`: 2 フォルダ間の同名スプレッドシートで、指定シート・セルの値をコピー（`syncCellBetweenFolders()`）
 

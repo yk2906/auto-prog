@@ -44,25 +44,6 @@ function getNotionPageTitleText(page) {
 }
 
 /**
- * タイトルが完全一致する Notion ページ（object: 'page'）の ID を検索する。
- * ObsidianのDriveApp.getFilesByName相当。対象ページはインテグレーションに共有されている必要がある。
- */
-function findNotionPageIdByTitle(title) {
-  const result = notionApiRequest('https://api.notion.com/v1/search', {
-    method: 'post',
-    payload: JSON.stringify({
-      query: title,
-      filter: { value: 'page', property: 'object' }
-    })
-  });
-  const matched = (result.results || []).filter(p => getNotionPageTitleText(p) === title);
-  if (matched.length === 0) {
-    throw new Error('Notionページ「' + title + '」が見つかりません。インテグレーションに共有されているか確認してください。');
-  }
-  return matched[0].id;
-}
-
-/**
  * NotionのページURL・共有リンク・素のID（ハイフン有無どちらも）を渡されても、IDを抽出する。
  * - Notion API が返す block.id はハイフン付きUUID形式（例: 3a4b5b5a-b776-800e-b7f6-e9c57bbfb233）
  * - ページURLに含まれるIDはハイフン無しの32桁（例: .../p/7-3a4b5b5ab776800eb7f6e9c57bbfb233）
@@ -232,72 +213,5 @@ function fetchNotionPageAsLines(pageId) {
   return lines;
 }
 
-// 括弧内が「所要時間」らしいものだけを採用（例:「（17分）」→「17分」）
-function notionIsDurationSegment(inner) {
-  if (!inner) return false;
-  inner = inner.trim();
-  if (!/\d/.test(inner)) return false;
-  return /(?:分|秒|時間|:)/.test(inner);
-}
-
-function notionExtractParenTime(text) {
-  if (!text) return '';
-  const candidates = [];
-  const re = /（([^）]+)）|\(([^)]+)\)/g;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    const inner = (m[1] || m[2] || '').trim();
-    if (notionIsDurationSegment(inner)) candidates.push(inner);
-  }
-  return candidates.length ? candidates[candidates.length - 1] : '';
-}
-
-function notionGetListIndent(l) {
-  const m = l.match(/^(\s*)([-*]|\d+\.)/);
-  return m ? m[1].length : -1;
-}
-
-/**
- * 行配列（Markdown風）を見出し単位で syncMap のキーに振り分ける。
- * shallowHeading を指定した場合、そのセクションだけ「一番浅いインデント」の行を
- * 1行ずつ shallowResults に積む（既存のObsidian版report2/3と同じ挙動）。
- */
-function buildSyncResultsFromLines(lines, syncMap, shallowHeading) {
-  function flushSection(target, items, res, shallowOut) {
-    if (!target || items.length === 0) return;
-    res[target] = (res[target] || []).concat(items.map(x => x.line));
-    if (shallowHeading && target === shallowHeading) {
-      const minIndent = Math.min.apply(null, items.map(x => x.indent));
-      items.filter(x => x.indent === minIndent)
-        .forEach(x => shallowOut.push([x.line]));
-    }
-  }
-
-  const results = {};
-  Object.keys(syncMap).forEach(key => results[key] = []);
-  const shallowResults = [];
-  let currentTarget = null;
-  let sectionListItems = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmedLine = line.trim();
-
-    if (trimmedLine.startsWith('#')) {
-      flushSection(currentTarget, sectionListItems, results, shallowResults);
-      sectionListItems = [];
-      currentTarget = syncMap[trimmedLine] ? trimmedLine : null;
-      continue;
-    }
-
-    if (currentTarget) {
-      if (trimmedLine.startsWith('-') || trimmedLine.startsWith('*') || trimmedLine.match(/^\d+\./)) {
-        const indent = notionGetListIndent(line);
-        if (indent >= 0) sectionListItems.push({ indent: indent, line: line });
-      }
-    }
-  }
-  flushSection(currentTarget, sectionListItems, results, shallowResults);
-
-  return { results: results, shallowResults: shallowResults };
-}
+// 見出し単位での抽出（buildSyncResultsFromLines）、括弧内所要時間の抽出（extractParenTime）は
+// Obsidian版と共通のため sync/SyncCommon.gs に集約されている。
