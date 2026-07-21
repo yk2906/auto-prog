@@ -18,6 +18,8 @@
 - `sync/SyncObsidianSS_report2.gs`: Markdown と同名のスプレッドシートの当月シートへ見出し単位で同期（`syncMarkdownToCellReport2()`）
 - `sync/SyncObsidianSS_report3.gs`: 同上（項番3用、`syncMarkdownToCellReport3()`）
 - `sync/SyncObsidianSS_report4.gs`: 同上（自主勉強会レポート用、`syncMarkdownToCellReport4()`）
+- `sync/NotionCommon.gs`: Notion連携の共通処理（トークン取得、タイトルでのページ検索、ブロック取得とMarkdown風行への変換、見出し単位の抽出ロジック）
+- `sync/SyncNotionSS_report2.gs` / `_report3.gs` / `_report4.gs`: 上記Obsidian版と同じセルマッピングで、同期元をNotionページに差し替えた版（`syncNotionToCellReport2/3/4()`）。Obsidian版と共存し、どちらも独立して実行可能
 - `objective_sync/objective_sync.gs`: 2 フォルダ間の同名スプレッドシートで、指定シート・セルの値をコピー（`syncCellBetweenFolders()`）
 
 ### 設定ファイル
@@ -43,6 +45,23 @@
    同じスプレッドシート内に「目次」という名前のシートがある場合、範囲 C5～E10（基準行は C5～E5）を次のルールで更新します。
    - **C列（日付）**: C5 から順に確認し、最初に空いている行にコピー実施日を記載。C5～C10 がすべて埋まっている場合は追記しません。
    - **D列・E列**: 日付を入れた行が 6 行目以降の場合のみ、その 1 行上の D・E の内容をその行にコピー（1 行分のみ）。
+
+## Notion同期（`syncNotionToCellReport2/3/4`）のセットアップ
+
+Obsidian版と同じセルマッピングで、同期元をNotionページに切り替えた版です。Obsidian版のファイルはそのまま維持されており、どちらも独立して実行できます。
+
+1. **Notion Integrationを作成**
+   https://www.notion.so/my-integrations で Internal Integration を作成し、シークレット（トークン）を発行します。
+2. **親ページをIntegrationに共有**
+   同期対象のページをまとめている親ページ（例: レポート一覧ページ）を開き、「Connect to」から作成したIntegrationを接続します。Notionは親ページへの共有を配下ページに自動継承するため、個々のレポートページを毎回共有し直す必要はありません。
+3. **各 `.gs` に親ページのURLを設定**
+   `sync/SyncNotionSS_report2/3/4.gs` 内の `notionRootPageUrl` に、手順2で共有した親ページを開いたときのURL（例: `https://app.notion.com/p/7-xxxxxxxx...`）を設定します。同期対象のページ検索はこの親ページ配下（子孫）に限定されます。
+4. **スクリプトプロパティにトークンを設定**
+   GASエディタの「プロジェクトの設定」→「スクリプトプロパティ」で `NOTION_API_TOKEN` にシークレットを設定します（コードには書き込まないでください）。
+5. **Notionページの見出し・リスト構成をObsidian版と合わせる**
+   見出しは `### 内容` のようなH3、本文は箇条書き（`-`/`*`/数字リスト）で記載し、ネストしたリストで階層を表現します。見出し名は各 `.gs` 内の `syncMap` のキーと完全一致させてください。ページタイトルはスプレッドシート名（`targetName`）と完全一致させてください。
+6. **動作確認**
+   `syncNotionToCellReport2()` / `syncNotionToCellReport3()` / `syncNotionToCellReport4()` を手動実行して同期結果を確認します。
 
 ## セットアップ手順
 
@@ -73,7 +92,7 @@ GASエディタで以下の手順を実行：
    - `copyDocumentReport()`
    - `copySpreadsheetReport()`
    - `copyMokuhyoukanriReport()`
-   - （利用する場合）`convertSheetsToExcel()`、`syncMarkdownToCellReport2` / `3` / `4`、`syncCellBetweenFolders()` — いずれも対応する `.gs` 内のフォルダ ID・ファイル名・セル指定を先に合わせてください
+   - （利用する場合）`convertSheetsToExcel()`、`syncMarkdownToCellReport2` / `3` / `4`、`syncNotionToCellReport2` / `3` / `4`、`syncCellBetweenFolders()` — いずれも対応する `.gs` 内のフォルダ ID・ファイル名・セル指定を先に合わせてください（Notion版は上記「Notion同期のセットアップ」も参照）
 
 ### 4. トリガー設定（任意）
 
