@@ -105,6 +105,16 @@ function findNotionPageIdUnderParent(rootPageIdOrUrl, title) {
           return block.id;
         }
         queue.push(block.id);
+      } else if (block.type === 'child_database') {
+        // テーブル/ボード表示のデータベースの場合、行（ページ）を問い合わせて探す
+        const rows = queryNotionDatabase(block.id);
+        for (let j = 0; j < rows.length; j++) {
+          const row = rows[j];
+          if (getNotionPageTitleText(row) === title) {
+            return row.id;
+          }
+          queue.push(row.id);
+        }
       } else if (block.has_children) {
         queue.push(block.id);
       }
@@ -112,6 +122,57 @@ function findNotionPageIdUnderParent(rootPageIdOrUrl, title) {
   }
 
   throw new Error('親ページ配下にNotionページ「' + title + '」が見つかりません。ページが親ページ配下にあるか、統合に共有されているか確認してください。');
+}
+
+function queryNotionDatabase(databaseId) {
+  let rows = [];
+  let cursor = null;
+  do {
+    const payload = cursor ? { start_cursor: cursor } : {};
+    const result = notionApiRequest('https://api.notion.com/v1/databases/' + databaseId + '/query', {
+      method: 'post',
+      payload: JSON.stringify(payload)
+    });
+    rows = rows.concat(result.results || []);
+    cursor = result.has_more ? result.next_cursor : null;
+  } while (cursor);
+  return rows;
+}
+
+/**
+ * デバッグ用: 指定した親ページ配下のブロックツリー（タイプ・タイトル・ID）を実行ログに出力する。
+ * 「タイトルが見つかりません」というエラーが出たとき、実際の構造・正確なタイトル文字列を確認するために使う。
+ */
+function debugListNotionTree(rootPageIdOrUrl, maxDepth) {
+  const rootId = normalizeNotionId(rootPageIdOrUrl);
+  logNotionTree_(rootId, 0, maxDepth || 4);
+}
+
+function logNotionTree_(blockId, depth, maxDepth) {
+  if (depth > maxDepth) return;
+  const indent = '  '.repeat(depth);
+  const children = fetchNotionBlockChildren(blockId);
+  children.forEach(function(block) {
+    if (block.type === 'child_page') {
+      Logger.log(indent + '- [child_page] 「' + block.child_page.title + '」 id=' + block.id);
+      logNotionTree_(block.id, depth + 1, maxDepth);
+    } else if (block.type === 'child_database') {
+      Logger.log(indent + '- [child_database] 「' + (block.child_database.title || '(無題)') + '」 id=' + block.id);
+      const rows = queryNotionDatabase(block.id);
+      rows.forEach(function(row) {
+        Logger.log(indent + '    - [database_row] 「' + getNotionPageTitleText(row) + '」 id=' + row.id);
+      });
+    } else {
+      let label = block.type;
+      if (block[block.type] && block[block.type].rich_text) {
+        label += ': ' + getRichTextPlain(block[block.type].rich_text);
+      }
+      Logger.log(indent + '- [' + label + '] id=' + block.id);
+      if (block.has_children) {
+        logNotionTree_(block.id, depth + 1, maxDepth);
+      }
+    }
+  });
 }
 
 function getRichTextPlain(richTextArr) {
