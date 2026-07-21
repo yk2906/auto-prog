@@ -7,6 +7,8 @@
 function syncNotionToCellReport4() {
   // --- 設定エリア ---
   const targetName = '【項番4】自主勉強会開催レポート';
+  // スプレッドシートの検索対象フォルダ
+  const spreadsheetFolderId = '17NUktwOSniJ0ZMQ8ViBxFqKzVswtrXKx';
   // この親ページ配下から同名のページを探す（親ページを開いてURLをコピーして設定）
   const notionRootPageUrl = 'https://app.notion.com/p/25-3a4b5b5ab776805d8e1de70ebb53a430';
 
@@ -22,8 +24,8 @@ function syncNotionToCellReport4() {
   // ----------------
 
   try {
-    // 1. スプレッドシートを名前で検索
-    const ssFiles = DriveApp.getFilesByName(targetName);
+    // 1. スプレッドシートを対象フォルダ配下で名前検索
+    const ssFiles = DriveApp.getFolderById(spreadsheetFolderId).getFilesByName(targetName);
     let ssFile = null;
     while (ssFiles.hasNext()) {
       const file = ssFiles.next();
