@@ -8,7 +8,7 @@ function syncNotionToCellReport3() {
   // --- 設定エリア ---
   const targetName = '【項番3】Udemy受講レポート';
   // この親ページ配下から同名のページを探す（親ページを開いてURLをコピーして設定）
-  const notionRootPageUrl = 'https://app.notion.com/p/7-3a4b5b5ab776800eb7f6e9c57bbfb233';
+  const notionRootPageUrl = 'https://app.notion.com/p/25-3a4b5b5ab776805d8e1de70ebb53a430';
 
   const today = new Date();
   const currentMonthName = (today.getMonth() + 1) + '月';
