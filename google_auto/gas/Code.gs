@@ -175,3 +175,43 @@ function log(message) {
   Logger.log('[' + new Date().toISOString() + '] ' + message);
 }
 
+/**
+ * 複数フォルダ内の指定MIMEタイプのファイルを、Google公式のエクスポートエンドポイント経由で
+ * 別形式（docx/xlsx等）に変換し、出力フォルダへ保存する。
+ * 出力先に同名ファイルが既にある場合はゴミ箱へ移動してから保存する。
+ *
+ * @param {string[]} sourceFolderIds 変換対象ファイルを探すフォルダIDの配列
+ * @param {string} outputFolderId 変換後ファイルの保存先フォルダID
+ * @param {GoogleAppsScript.Base.MimeType} sourceMimeType 変換対象のMIMEタイプ（例: MimeType.GOOGLE_DOCS）
+ * @param {string} exportPathSegment エクスポートURLのパス部分（例: 'document' / 'spreadsheets'）
+ * @param {string} format 出力拡張子・フォーマット（例: 'docx' / 'xlsx'）
+ */
+function convertFilesInFolders(sourceFolderIds, outputFolderId, sourceMimeType, exportPathSegment, format) {
+  const outputFolder = DriveApp.getFolderById(outputFolderId);
+
+  sourceFolderIds.forEach(function(sourceFolderId) {
+    const sourceFolder = DriveApp.getFolderById(sourceFolderId);
+    const files = sourceFolder.getFilesByType(sourceMimeType);
+
+    while (files.hasNext()) {
+      const file = files.next();
+      const fileName = file.getName() + '.' + format;
+
+      const existingFiles = outputFolder.getFilesByName(fileName);
+      while (existingFiles.hasNext()) {
+        existingFiles.next().setTrashed(true); // ゴミ箱へ移動（誤操作防止のため完全に消さずゴミ箱推奨）
+        log('既存の同名ファイルをゴミ箱に移動しました: ' + fileName);
+      }
+
+      const url = 'https://docs.google.com/' + exportPathSegment + '/d/' + file.getId() + '/export?format=' + format;
+      const token = ScriptApp.getOAuthToken();
+      const response = UrlFetchApp.fetch(url, {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+
+      outputFolder.createFile(response.getBlob()).setName(fileName);
+      log(fileName + ' の変換が完了しました。');
+    }
+  });
+}
+
