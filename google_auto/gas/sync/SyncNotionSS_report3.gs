@@ -21,7 +21,7 @@ function syncNotionToCellReport3() {
     '### 活用実践の成果': 'B35',
   };
   const shallowCells = ['E9', 'E10', 'E11', 'E12', 'E13', 'E14'];
-  const shallowTimeCells = ['S9', 'S10', 'S11', 'S12', 'S13', 'S14'];
+  const shallowTimeCells = ['S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15'];
   // ----------------
 
   try {
