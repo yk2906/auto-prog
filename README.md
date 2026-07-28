@@ -11,30 +11,26 @@ auto-prog/
 ├── google_auto/              # Google Workspace自動化
 │   ├── google_api_client.py  # Google API共通クライアント（Python用）
 │   ├── config.json           # 設定ファイル（Python用）
-│   ├── gas/                  # GAS版スクリプト
-│   │   ├── Code.gs
-│   │   ├── CopyDocumentReport.gs
-│   │   ├── CopySpreadsheetReport.gs
-│   │   ├── CopyMokuhyoukanriReport.gs
-│   │   ├── ConvertDocsToWord.gs
-│   │   ├── ConvertSheetsToExcel.gs
-│   │   ├── Setup.gs
-│   │   ├── objective_sync/   # 目標管理同期スクリプト
-│   │   ├── sync/             # ObsidianとスプレッドシートのSync
-│   │   └── README.md
-│   ├── google_document/      # Googleドキュメント関連（Python用）
-│   │   └── copy_document_report.py
-│   └── google_spreadsheet/   # Googleスプレッドシート関連（Python用）
-│       ├── copy_spreadsheet_report.py
-│       └── copy_spreadsheet_mokuhyoukanri_report.py
+│   └── gas/                  # GAS版スクリプト（ドキュメント/スプレッドシートのコピー系は現在GAS版のみ）
+│       ├── Code.gs
+│       ├── CopyDocumentReport.gs
+│       ├── CopySpreadsheetReport.gs
+│       ├── CopyMokuhyoukanriReport.gs
+│       ├── ConvertDocsToWord.gs
+│       ├── ConvertSheetsToExcel.gs
+│       ├── Setup.gs
+│       ├── objective_sync/   # 目標管理同期スクリプト
+│       ├── sync/             # ObsidianとスプレッドシートのSync
+│       └── README.md
 ├── gunpla/                   # Webスクレイピング
 │   └── notif-mg-gunpla-info.py
 ├── mail/                     # メール送信補助（WSL2 + Thunderbird）
 │   ├── submit_monthly_report_mail.py
 │   └── submit_monthly_coachmtg_mail.py
-├── playwright/               # ブラウザ自動化（Node / Playwright）
-│   ├── playwright-test/      # 単体スクリプト（site-login.js など）
-│   ├── tests/                # Playwright テスト（@playwright/test）
+├── playwright/                # ブラウザ自動化（Node / Playwright）
+│   ├── site-login/            # Bold ポータル勤怠ログイン（site-login.js）
+│   ├── test-youtube/          # 動作確認用サンプル（test-youtube.js）
+│   ├── tests/                 # Playwright テスト（@playwright/test）
 │   ├── package.json
 │   └── playwright.config.ts
 ├── pyproject.toml            # プロジェクト設定
@@ -45,23 +41,26 @@ auto-prog/
 
 ### Google Workspace自動化
 
+Googleドキュメント／スプレッドシートのコピー系機能は、現在は Python 版を廃止し **GAS版のみ** で提供しています。詳細は [GAS版の使用方法](#gas版の使用方法) を参照してください。
+
 #### 1. Googleドキュメントの月次コピー
-- `google_auto/google_document/copy_document_report.py`
+- `google_auto/gas/CopyDocumentReport.gs`
 - 指定フォルダ内の最新Googleドキュメントを月次でコピー
 - ファイル名: `状況報告書_{月}月`
 
 #### 2. 日次レポートの自動生成
-- `google_auto/google_spreadsheet/copy_spreadsheet_report.py`
+- `google_auto/gas/CopySpreadsheetReport.gs`
 - スプレッドシートの最新シートをコピー
 - シート名を「① 月日」形式で自動採番
 - 指定セルをクリアし、日付を自動更新
 
 #### 3. 目標管理レポートの自動生成
-- `google_auto/google_spreadsheet/copy_spreadsheet_mokuhyoukanri_report.py`
+- `google_auto/gas/CopyMokuhyoukanriReport.gs`
 - Googleカレンダーから「コーチ面談」イベントを取得
 - 最新シートをコピーし、シート名を日付（YYYYMMDD）に設定
 - 新シートのタブを赤色、旧シートを白色に変更
 - 指定セルをクリアし、日付を自動更新
+- GAS自体のトリガー（`Setup.gs` の `setupTriggers()`）に加えて、`.github/workflows/copy_spreadsheet_mokuhyoukanri_report.yaml` からも `clasp run copyMokuhyoukanriReport` で手動・定期実行できます
 
 ### メール送信補助
 
@@ -83,7 +82,7 @@ auto-prog/
 
 ### ブラウザ自動化（Bold ポータル勤怠）
 
-- `playwright/playwright-test/site-login.js`
+- `playwright/site-login/site-login.js`
 - Bold ポータルにメール＋パスワードでログインし、勤怠ビューへ遷移して操作します。
 - **更新対象の日程**: 実行日を含む直近 7 日間（実行日より前 6 日＋実行日）。未来の日付は対象外です。
 - **テレワーク等のチェック**: 上記の範囲で、月曜・水曜の行のみ「定時」の前にオンにします。
@@ -126,26 +125,7 @@ npx playwright install chromium
 
 ## 使用方法
 
-### Googleドキュメントの月次コピー
-
-```bash
-cd google_auto/google_document
-uv run python copy_document_report.py
-```
-
-### 日次レポートの自動生成
-
-```bash
-cd google_auto/google_spreadsheet
-uv run python copy_spreadsheet_report.py
-```
-
-### 目標管理レポートの自動生成
-
-```bash
-cd google_auto/google_spreadsheet
-uv run python copy_spreadsheet_mokuhyoukanri_report.py
-```
+Googleドキュメント／スプレッドシートのコピー系（月次コピー・日次レポート・目標管理レポート）はGAS版のみです。[GAS版の使用方法](#gas版の使用方法) を参照してください。
 
 ### ガンプラ情報取得
 
@@ -179,14 +159,14 @@ export LOGIN_EMAIL='you@example.com'
 export LOGIN_PASSWORD='secret'
 # ブラウザを表示する場合（省略時はヘッドレス）
 export HEADED=1
-node playwright-test/site-login.js
+node site-login/site-login.js
 ```
 
-`.env` を使う例（`playwright/playwright-test/.env` に `LOGIN_URL` 等を記載。リポジトリには含めないでください）:
+`.env` を使う例（`playwright/site-login/.env` に `LOGIN_URL` 等を記載。リポジトリには含めないでください）:
 
 ```bash
 cd playwright
-set -a && source playwright-test/.env && set +a && node playwright-test/site-login.js
+set -a && source site-login/.env && set +a && node site-login/site-login.js
 ```
 
 **必須の環境変数**: `LOGIN_URL`, `LOGIN_EMAIL`, `LOGIN_PASSWORD`
@@ -236,6 +216,13 @@ GAS版は認証不要で、定期実行の設定も簡単です。詳細は `goo
 
 5. トリガー設定（任意）
    - GASエディタで`Setup.gs`の`setupTriggers()`関数を実行
+
+### GitHub Actions から関数を実行する（`clasp run`）
+
+`.github/workflows/copy_spreadsheet_mokuhyoukanri_report.yaml` は `clasp run copyMokuhyoukanriReport` でGAS側の関数を直接呼び出します。利用には以下が必要です。
+
+- 対象スクリプトプロジェクトで **Apps Script API** を有効化していること（[script.google.com/home/usersettings](https://script.google.com/home/usersettings) で有効化）
+- リポジトリの **Repository secrets** に `CLASPRC_JSON`（`clasp login` 後の `~/.clasprc.json` の内容）・`GAS_SCRIPT_ID` を登録済みであること（`deploy-gas.yaml` と共通）
 
 ## 依存関係
 
