@@ -594,6 +594,8 @@ async function fillRowTimesheetTimes(pLocator, timesheet) {
       }
     }
     if ((await input.count()) === 0) {
+      const rowHtml = await row.evaluate((el) => el.outerHTML).catch(() => '(取得失敗)');
+      console.error(`[デバッグ] ${label}探索対象の行HTML:\n${rowHtml.slice(0, 4000)}`);
       throw new Error(
         `${label}の入力欄が見つかりません（START_TIME_INPUT_SELECTOR / END_TIME_INPUT_SELECTOR や列番号を確認してください）`,
       );
