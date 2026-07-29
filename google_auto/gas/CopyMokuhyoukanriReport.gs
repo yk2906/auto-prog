@@ -51,20 +51,23 @@ function copyMokuhyoukanriReport() {
     const config = getConfig();
     const reportConfig = config.goal_management_report;
     
-    if (!reportConfig.source_folder_id || !reportConfig.calendar_id) {
-      log('エラー: source_folder_id または calendar_id が設定されていません');
+    if (!reportConfig.parent_folder_id || !reportConfig.calendar_id) {
+      log('エラー: parent_folder_id または calendar_id が設定されていません');
       return;
     }
-    
+
     // コーチ面談の日付を取得
     const coachingDates = getCoachingDates(reportConfig.calendar_id);
     if (coachingDates.length === 0) {
       return;
     }
-    
+
+    // 親フォルダ配下から最新の期のフォルダを動的に特定
+    const latestPeriodFolder = getLatestPeriodFolder(reportConfig.parent_folder_id);
+
     // 最新のスプレッドシートを取得
     const latestFile = getLatestFileInFolder(
-      reportConfig.source_folder_id,
+      latestPeriodFolder.getId(),
       MimeType.GOOGLE_SHEETS
     );
     

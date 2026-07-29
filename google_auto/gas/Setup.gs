@@ -21,7 +21,7 @@ function getConfigValues() {
       date_cell: {row: 8, column: 5}
     },
     goal_management_report: {
-      source_folder_id: sharedFolderId,
+      parent_folder_id: '1D7NbyG5XwS0kDH-MmbmPQadn8EtZ-Usp',
       calendar_id: 'yk050696@gmail.com',
       cells_to_clear: [
         [22, 39], [31, 39], [40, 39], [50, 39], [60, 39], // AM列

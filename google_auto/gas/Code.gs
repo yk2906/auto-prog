@@ -83,6 +83,42 @@ function getLatestFileInFolder(folderId, mimeType) {
 }
 
 /**
+ * 親フォルダ配下の「{数字}期上期」「{数字}期下期」という名前のフォルダのうち、
+ * 期番号が最大のもの（同一番号なら下期を優先）を取得する
+ */
+function getLatestPeriodFolder(parentFolderId) {
+  const parentFolder = resolveFolder(parentFolderId);
+  const folders = parentFolder.getFolders();
+  const periodPattern = /^(\d+)期(上|下)期$/;
+
+  let latestFolder = null;
+  let latestNumber = -1;
+  let latestHalf = -1;
+
+  while (folders.hasNext()) {
+    const folder = folders.next();
+    const match = folder.getName().match(periodPattern);
+    if (!match) continue;
+
+    const number = parseInt(match[1], 10);
+    const half = match[2] === '下' ? 1 : 0;
+
+    if (number > latestNumber || (number === latestNumber && half > latestHalf)) {
+      latestNumber = number;
+      latestHalf = half;
+      latestFolder = folder;
+    }
+  }
+
+  if (!latestFolder) {
+    throw new Error('期フォルダ（例: 25期上期）が見つかりませんでした。parentFolderId=' + parentFolderId);
+  }
+
+  log('最新の期フォルダ: ' + latestFolder.getName() + ' (ID: ' + latestFolder.getId() + ')');
+  return latestFolder;
+}
+
+/**
  * フォルダ内のすべてのファイルを取得
  */
 function getFilesInFolder(folderId, mimeType) {
