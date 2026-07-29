@@ -33,8 +33,10 @@
  *   SCHEDULE_APPLY_BUTTON_NAME   行の「申請」ボタン表示名（既定: 申請）
  *   EXPENSE_ACCORDION_LABEL      モーダル内アコーディオンの見出しテキスト（既定: 交通費 1）
  *   LEGACY_LOGIN_LINK_NAME       ログインページの遷移リンク表示名（既定: 従来のログインはこちら）
- *   TIMESHEET_CSV                「日付,始業時刻,終業時刻」形式の生CSV（例: " 7/1,09:00,18:15"）。
- *                                 日付は年なしの M/D 形式。未設定時は「定時」押下のみで時刻上書きは行わない。
+ *   TIMESHEET_CSV_PATH           「日付,始業時刻,終業時刻」形式のCSVファイルのパス（例: site-login/timesheet.csv）。
+ *                                 TIMESHEET_CSV より優先される。日付は年なしの M/D 形式。
+ *   TIMESHEET_CSV                 CSVを生文字列で渡す場合（TIMESHEET_CSV_PATH 未設定時のフォールバック）。
+ *                                 いずれも未設定時は「定時」押下のみで時刻上書きは行わない。
  *                                 始業・終業が両方空欄の行はその日を丸ごとスキップする（休日・公休扱い）。
  *   TIME_INPUT_SELECTOR          行内の時刻入力欄セレクタ（既定: input[type="time"]。始業・終業・休憩の順で並ぶ）
  *   START_TIME_INPUT_INDEX       時刻入力欄のうち始業が何番目か（0始まり。既定: 0）
@@ -46,6 +48,7 @@
 // ローカルおよび GitHub Actions (UTC) の両環境で JST として動作させる
 process.env.TZ = 'Asia/Tokyo';
 
+const fs = require('fs');
 const { chromium } = require('playwright');
 
 const PORTAL_PAGE_A = 'https://portal.bold.ne.jp/attendance';
@@ -516,7 +519,13 @@ async function ensureRowChakraCheckboxCheckedNearDateParagraph(pLocator, options
   );
 }
 
+/** TIMESHEET_CSV_PATH（ファイル）を優先し、なければ TIMESHEET_CSV（生CSV文字列）を使う */
 function getTimesheetCsvText() {
+  const pathRaw = process.env.TIMESHEET_CSV_PATH?.trim();
+  if (pathRaw) {
+    return fs.readFileSync(pathRaw, 'utf8');
+  }
+
   const raw = process.env.TIMESHEET_CSV;
   if (!raw || !raw.trim()) return null;
   return raw;

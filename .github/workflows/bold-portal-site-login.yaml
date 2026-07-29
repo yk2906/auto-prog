@@ -3,13 +3,16 @@
 #   BOLD_LOGIN_URL       ログインページの URL
 #   BOLD_LOGIN_EMAIL     ログインメール
 #   BOLD_LOGIN_PASSWORD  ログインパスワード
-#   BOLD_TIMESHEET_CSV   月末確定モード（RUN_MODE=month_end）で使う「日付,始業時刻,終業時刻」CSV（任意。未設定なら月末確定は失敗する）
+#
+# 月末確定モード（RUN_MODE=month_end）の時刻データは
+# playwright/site-login/timesheet.csv（リポジトリにコミット）を読み込みます。
+# 毎月、その月の「日付,始業時刻,終業時刻」でこのファイルを上書きしてコミット・pushしてください。
 #
 # 手動実行: Actions タブ → 「Bold portal site-login」→ Run workflow（run_mode を weekly / month_end から選択可）
 #
 # スケジュール:
 #   毎週金曜 23:30 JST … 週次実行（直近7日間の「定時」処理）
-#   毎月28〜31日 18:45 JST … 月末確定実行（TIMESHEET_CSVの時刻で対象月全日を上書き）。
+#   毎月28〜31日 18:45 JST … 月末確定実行（timesheet.csv の時刻で対象月全日を上書き）。
 #     cron は「28〜31日」を毎月無条件に発火するため、実行日の翌日が1日（＝実際の月末）の場合のみ処理する
 
 name: Bold portal site-login
@@ -96,5 +99,5 @@ jobs:
           LOGIN_EMAIL: ${{ secrets.BOLD_LOGIN_EMAIL }}
           LOGIN_PASSWORD: ${{ secrets.BOLD_LOGIN_PASSWORD }}
           RUN_MODE: ${{ steps.mode.outputs.run_mode }}
-          TIMESHEET_CSV: ${{ secrets.BOLD_TIMESHEET_CSV }}
+          TIMESHEET_CSV_PATH: site-login/timesheet.csv
         run: node site-login/site-login.js
