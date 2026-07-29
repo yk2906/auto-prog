@@ -59,6 +59,11 @@ const DEFAULT_DATE_PARAGRAPH_SELECTOR = 'p.chakra-text.css-fivo40';
 const DEFAULT_ROW_CHECKBOX_SELECTOR = 'span.chakra-checkbox__control, [class*="chakra-checkbox__control"]';
 const DEFAULT_ROW_CHECKBOX_INPUT_SELECTOR =
   'input.chakra-checkbox__input, input[type="checkbox"][class*="chakra-checkbox__input"]';
+const DEFAULT_TIME_INPUT_SELECTOR = 'input[type="time"]';
+
+// ─────────────────────────────────────────────
+// 汎用ヘルパー
+// ─────────────────────────────────────────────
 
 function requireEnv(name) {
   const v = process.env[name];
@@ -69,6 +74,19 @@ function requireEnv(name) {
   return v.trim();
 }
 
+/** 環境変数を文字列として取得。未設定・空なら fallback */
+function getEnvStr(name, fallback) {
+  return process.env[name]?.trim() || fallback;
+}
+
+/** 環境変数を0以上の整数として取得。未設定・空・不正なら fallback */
+function getEnvInt(name, fallback) {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -77,9 +95,34 @@ async function waitForNetworkIdle(page) {
   await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
 }
 
+/**
+ * attemptFn() が truthy を返すまで pollMs 間隔で timeoutMs の間リトライする。
+ * タイムアウトした場合は undefined を返す（例外は投げない。呼び出し側で判定する）。
+ */
+async function retryUntil(attemptFn, { timeoutMs, pollMs = 300 }) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const result = await attemptFn();
+    if (result) return result;
+    await sleep(pollMs);
+  }
+  return undefined;
+}
+
+async function gotoAndWait(page, url) {
+  console.log('遷移:', url);
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await waitForNetworkIdle(page);
+  console.log(`遷移後のURL: ${page.url()}`);
+}
+
+// ─────────────────────────────────────────────
+// ログイン
+// ─────────────────────────────────────────────
+
 /** 新UIのログインページには「従来のログインはこちら」リンクがあり、押下後に email/password フォームが表示される */
 async function clickLegacyLoginLink(page) {
-  const linkName = process.env.LEGACY_LOGIN_LINK_NAME?.trim() || '従来のログインはこちら';
+  const linkName = getEnvStr('LEGACY_LOGIN_LINK_NAME', '従来のログインはこちら');
   const link = page.getByRole('button', { name: linkName }).or(page.getByText(linkName)).first();
   await link.waitFor({ state: 'visible', timeout: 15_000 });
   await link.click();
@@ -102,6 +145,10 @@ async function fillEmailAndPassword(page, email, password) {
   await emailBox.fill(email);
   await passwordBox.fill(password);
 }
+
+// ─────────────────────────────────────────────
+// 日付関連
+// ─────────────────────────────────────────────
 
 const JA_WEEKDAY_TO_JS = { 日: 0, 月: 1, 火: 2, 水: 3, 木: 4, 金: 5, 土: 6 };
 
@@ -198,25 +245,34 @@ function getScheduleDateWindowIncludingRunDay() {
   return { start, end };
 }
 
-function getAfterUpdateDelayMs() {
-  const raw = process.env.AFTER_UPDATE_MS?.trim();
-  if (!raw) return 10000;
-  const n = parseInt(raw, 10);
-  return Number.isFinite(n) && n >= 0 ? n : 10000;
+function isMondayOrWednesday(d) {
+  const wd = d.getDay();
+  return wd === 1 || wd === 3;
 }
+
+function isTuesdayThursdayFriday(d) {
+  const wd = d.getDay();
+  return wd === 2 || wd === 4 || wd === 5;
+}
+
+function isWeekend(d) {
+  const wd = d.getDay();
+  return wd === 0 || wd === 6;
+}
+
+// ─────────────────────────────────────────────
+// 日程行の操作（ボタン押下・テレワークチェック・時刻入力）
+// ─────────────────────────────────────────────
 
 async function clickNamedButtonNearDateParagraph(pLocator, buttonName, options = {}) {
   const timeoutMs = options.timeoutMs ?? 15_000;
   const pollMs = options.pollMs ?? 300;
-  const deadline = Date.now() + timeoutMs;
 
-  while (Date.now() < deadline) {
+  const clicked = await retryUntil(async () => {
     const handle = await pLocator.elementHandle();
-    if (!handle) {
-      await sleep(pollMs);
-      continue;
-    }
-    const clicked = await handle.evaluate((el, name) => {
+    if (!handle) return false;
+
+    const result = await handle.evaluate((el, name) => {
       const matchesName = (b) => {
         const text = (b.textContent || '').replace(/\s+/g, ' ').trim();
         const label = (b.getAttribute('aria-label') || '').trim();
@@ -239,18 +295,19 @@ async function clickNamedButtonNearDateParagraph(pLocator, buttonName, options =
     }, buttonName);
     await handle.dispose();
 
-    if (clicked) return;
-    await sleep(pollMs);
-  }
+    return result;
+  }, { timeoutMs, pollMs });
 
-  throw new Error(
-    `日付行の近くに名前「${buttonName}」の有効な button が ${timeoutMs}ms 以内に見つかりません（DOM・表記・disabled 解除待ちを要確認）`,
-  );
+  if (!clicked) {
+    throw new Error(
+      `日付行の近くに名前「${buttonName}」の有効な button が ${timeoutMs}ms 以内に見つかりません（DOM・表記・disabled 解除待ちを要確認）`,
+    );
+  }
 }
 
 async function runApplyAndExpenseTemplateFlow(page, rowParagraph) {
-  const applyName = process.env.SCHEDULE_APPLY_BUTTON_NAME?.trim() || '申請';
-  const expenseLabel = process.env.EXPENSE_ACCORDION_LABEL?.trim() || '交通費 1';
+  const applyName = getEnvStr('SCHEDULE_APPLY_BUTTON_NAME', '申請');
+  const expenseLabel = getEnvStr('EXPENSE_ACCORDION_LABEL', '交通費 1');
 
   await clickNamedButtonNearDateParagraph(rowParagraph, applyName);
   await waitForNetworkIdle(page);
@@ -283,6 +340,19 @@ async function runApplyAndExpenseTemplateFlow(page, rowParagraph) {
   await outerDialog.waitFor({ state: 'hidden', timeout: 30_000 }).catch(() => {});
 }
 
+async function locateTableRowForDateParagraph(pLocator) {
+  const page = pLocator.page();
+  const candidates = [
+    page.locator('tbody tr[role="row"]').filter({ has: pLocator }),
+    page.locator('tr[role="row"]').filter({ has: pLocator }),
+    page.locator('tbody tr').filter({ has: pLocator }),
+  ];
+  for (const row of candidates) {
+    if ((await row.count()) > 0) return row.first();
+  }
+  return pLocator.locator('xpath=./ancestor::tr[1]');
+}
+
 async function resolveCheckboxInputFromRow(row, inputSelector, teleworkColIndex) {
   const chakra = row.locator('label.chakra-checkbox input.chakra-checkbox__input').first();
   if ((await chakra.count()) > 0) return chakra;
@@ -304,9 +374,9 @@ async function resolveCheckboxInputFromRow(row, inputSelector, teleworkColIndex)
 async function ensureRowChakraCheckboxCheckedNearDateParagraph(pLocator, options = {}) {
   const timeoutMs = options.timeoutMs ?? 20_000;
   const pollMs = options.pollMs ?? 400;
-  const checkboxSelector = process.env.ROW_CHECKBOX_SELECTOR?.trim() || DEFAULT_ROW_CHECKBOX_SELECTOR;
-  const inputSelector = process.env.ROW_CHECKBOX_INPUT_SELECTOR?.trim() || DEFAULT_ROW_CHECKBOX_INPUT_SELECTOR;
-  const deadline = Date.now() + timeoutMs;
+  const checkboxSelector = getEnvStr('ROW_CHECKBOX_SELECTOR', DEFAULT_ROW_CHECKBOX_SELECTOR);
+  const inputSelector = getEnvStr('ROW_CHECKBOX_INPUT_SELECTOR', DEFAULT_ROW_CHECKBOX_INPUT_SELECTOR);
+  const teleworkColIndex = getEnvInt('TELEWORK_COLUMN_INDEX', 1);
 
   // input.checked だけでは取りこぼすケースがあるため label/control の data-checked も確認する
   const isChakraCheckboxOn = async (inputLocator) => {
@@ -323,21 +393,8 @@ async function ensureRowChakraCheckboxCheckedNearDateParagraph(pLocator, options
       .catch(() => false);
   };
 
-  const waitUntilChecked = async (inputLocator, maxMs = 3000) => {
-    const end = Date.now() + maxMs;
-    while (Date.now() < end) {
-      if (await isChakraCheckboxOn(inputLocator)) return true;
-      await sleep(80);
-    }
-    return false;
-  };
-
-  const teleworkColIndex = (() => {
-    const raw = process.env.TELEWORK_COLUMN_INDEX?.trim();
-    if (!raw) return 1;
-    const n = parseInt(raw, 10);
-    return Number.isFinite(n) && n >= 0 ? n : 1;
-  })();
+  const waitUntilChecked = async (inputLocator, maxMs = 3000) =>
+    Boolean(await retryUntil(() => isChakraCheckboxOn(inputLocator), { timeoutMs: maxMs, pollMs: 80 }));
 
   const CHAKRA_INTERACT_SETTLE_MS = 2500;
 
@@ -491,33 +548,99 @@ async function ensureRowChakraCheckboxCheckedNearDateParagraph(pLocator, options
     return 'none';
   };
 
-  const logCheckboxResultAndStop = (outcome, detailJa) => {
-    if (outcome === 'already') {
-      console.log('同一行のチェックボックスは既にオンです');
-      return true;
-    }
-    if (outcome === 'clicked') {
-      console.log(`同一行のチェックボックスをオンにしました（${detailJa}）`);
-      return true;
-    }
-    return false;
-  };
-
-  while (Date.now() < deadline) {
+  const result = await retryUntil(async () => {
     const tableOutcome = await tryCheckboxInsideTableRow();
-    if (logCheckboxResultAndStop(tableOutcome, 'テーブル行内の input.chakra-checkbox__input')) return;
+    if (tableOutcome !== 'none') {
+      return { outcome: tableOutcome, detail: 'テーブル行内の input.chakra-checkbox__input' };
+    }
 
     for (let depth = 1; depth <= 12; depth++) {
-      const outcome = await tryToggleInAncestorScope(depth);
-      if (logCheckboxResultAndStop(outcome, '祖先スキャン フォールバック')) return;
+      const depthOutcome = await tryToggleInAncestorScope(depth);
+      if (depthOutcome !== 'none') {
+        return { outcome: depthOutcome, detail: '祖先スキャン フォールバック' };
+      }
     }
-    await sleep(pollMs);
+
+    return null;
+  }, { timeoutMs, pollMs });
+
+  if (!result) {
+    throw new Error(
+      `同一行のチェックが ${timeoutMs}ms 以内にオンになりませんでした（ROW_CHECKBOX_INPUT_SELECTOR 等を確認）`,
+    );
   }
 
-  throw new Error(
-    `同一行のチェックが ${timeoutMs}ms 以内にオンになりませんでした（ROW_CHECKBOX_INPUT_SELECTOR 等を確認）`,
-  );
+  if (result.outcome === 'already') {
+    console.log('同一行のチェックボックスは既にオンです');
+  } else {
+    console.log(`同一行のチェックボックスをオンにしました（${result.detail}）`);
+  }
 }
+
+/**
+ * CSVの始業・終業時刻を同一行の時刻入力欄に反映する（値が空の側はスキップ）。
+ * 行内には <input type="time"> が「始業・終業・休憩」の順で3つ並んでおり、
+ * 始業=0番目・終業=1番目（既定）。休憩欄は HH:MM:SS 形式で他と異なるため対象外。
+ */
+async function fillRowTimesheetTimes(pLocator, timesheet) {
+  const timeInputSelector = getEnvStr('TIME_INPUT_SELECTOR', DEFAULT_TIME_INPUT_SELECTOR);
+  const startNth = getEnvInt('START_TIME_INPUT_INDEX', 0);
+  const endNth = getEnvInt('END_TIME_INPUT_INDEX', 1);
+
+  const row = await locateTableRowForDateParagraph(pLocator);
+  const timeInputs = row.locator(timeInputSelector);
+
+  const fillField = async (nth, value, label) => {
+    if (!value) return;
+
+    const input = timeInputs.nth(nth);
+    if ((await input.count()) === 0) {
+      const rowHtml = await row.evaluate((el) => el.outerHTML).catch(() => '(取得失敗)');
+      console.error(`[デバッグ] ${label}探索対象の行HTML:\n${rowHtml.slice(0, 4000)}`);
+      throw new Error(
+        `${label}の入力欄（${nth}番目の ${timeInputSelector}）が見つかりません（TIME_INPUT_SELECTOR / START_TIME_INPUT_INDEX / END_TIME_INPUT_INDEX を確認してください）`,
+      );
+    }
+
+    await input.scrollIntoViewIfNeeded().catch(() => {});
+    await input.fill(value);
+    await input.evaluate((el) => el.blur?.()).catch(() => {});
+  };
+
+  await fillField(startNth, timesheet.start, '始業時刻');
+  await fillField(endNth, timesheet.end, '終業時刻');
+}
+
+/**
+ * 日付段落 p の実要素を直接掴み、祖先の tr を辿って区分（公休など）と未更新判定をまとめて取得する。
+ * items.nth(i) をロケータのまま filter({ has }) で再検索すると、テーブルの描画状況によって
+ * ページ全体でのインデックス解決がずれることがあるため、elementHandle 経由で確実に同一要素から辿る。
+ * @returns {Promise<{holidayValue: string|null, isUnregistered: boolean} | null>}
+ */
+async function inspectRowForDateParagraph(pLocator) {
+  const handle = await pLocator.elementHandle();
+  if (!handle) return null;
+  try {
+    return await handle.evaluate((el) => {
+      const tr = el.closest('tr');
+      if (!tr) return null;
+      const select = tr.querySelector('select');
+      const holidayValue = select ? select.value : null;
+      const cells = [...tr.querySelectorAll('td, [role="gridcell"]')];
+      const times = cells
+        .map((c) => (c.textContent || '').trim())
+        .filter((t) => /^\d{1,2}:\d{2}$/.test(t));
+      const isUnregistered = times.length > 0 && times.every((t) => t === '00:00');
+      return { holidayValue, isUnregistered };
+    });
+  } finally {
+    await handle.dispose();
+  }
+}
+
+// ─────────────────────────────────────────────
+// タイムシートCSV
+// ─────────────────────────────────────────────
 
 /** TIMESHEET_CSV_PATH（ファイル）を優先し、なければ TIMESHEET_CSV（生CSV文字列）を使う */
 function getTimesheetCsvText() {
@@ -558,120 +681,42 @@ function timesheetKeyForDate(d) {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-async function locateTableRowForDateParagraph(pLocator) {
-  const page = pLocator.page();
-  const candidates = [
-    page.locator('tbody tr[role="row"]').filter({ has: pLocator }),
-    page.locator('tr[role="row"]').filter({ has: pLocator }),
-    page.locator('tbody tr').filter({ has: pLocator }),
-  ];
-  for (const row of candidates) {
-    if ((await row.count()) > 0) return row.first();
-  }
-  return pLocator.locator('xpath=./ancestor::tr[1]');
-}
-
 /**
- * CSVの始業・終業時刻を同一行の時刻入力欄に反映する（値が空の側はスキップ）。
- * 行内には <input type="time"> が「始業・終業・休憩」の順で3つ並んでおり、
- * 始業=0番目・終業=1番目（既定）。休憩欄は HH:MM:SS 形式で他と異なるため対象外。
+ * TIMESHEET_CSV_PATH / TIMESHEET_CSV を読み込んで Map にする。
+ * @param {{ required?: boolean }} options required=true で未設定時に例外を投げる（月末確定モード用）
+ * @returns {Map | null}
  */
-async function fillRowTimesheetTimes(pLocator, timesheet) {
-  const timeInputSelector = process.env.TIME_INPUT_SELECTOR?.trim() || 'input[type="time"]';
-  const startNth = (() => {
-    const n = parseInt(process.env.START_TIME_INPUT_INDEX?.trim() || '', 10);
-    return Number.isFinite(n) && n >= 0 ? n : 0;
-  })();
-  const endNth = (() => {
-    const n = parseInt(process.env.END_TIME_INPUT_INDEX?.trim() || '', 10);
-    return Number.isFinite(n) && n >= 0 ? n : 1;
-  })();
-
-  const row = await locateTableRowForDateParagraph(pLocator);
-  const timeInputs = row.locator(timeInputSelector);
-
-  const fillField = async (nth, value, label) => {
-    if (!value) return;
-
-    const input = timeInputs.nth(nth);
-    if ((await input.count()) === 0) {
-      const rowHtml = await row.evaluate((el) => el.outerHTML).catch(() => '(取得失敗)');
-      console.error(`[デバッグ] ${label}探索対象の行HTML:\n${rowHtml.slice(0, 4000)}`);
-      throw new Error(
-        `${label}の入力欄（${nth}番目の ${timeInputSelector}）が見つかりません（TIME_INPUT_SELECTOR / START_TIME_INPUT_INDEX / END_TIME_INPUT_INDEX を確認してください）`,
-      );
-    }
-
-    await input.scrollIntoViewIfNeeded().catch(() => {});
-    await input.fill(value);
-    await input.evaluate((el) => el.blur?.()).catch(() => {});
-  };
-
-  await fillField(startNth, timesheet.start, '始業時刻');
-  await fillField(endNth, timesheet.end, '終業時刻');
-}
-
-function isMondayOrWednesday(d) {
-  const wd = d.getDay();
-  return wd === 1 || wd === 3;
-}
-
-function isTuesdayThursdayFriday(d) {
-  const wd = d.getDay();
-  return wd === 2 || wd === 4 || wd === 5;
-}
-
-function isWeekend(d) {
-  const wd = d.getDay();
-  return wd === 0 || wd === 6;
-}
-
-/**
- * 日付段落 p の実要素を直接掴み、祖先の tr を辿って区分（公休など）と未更新判定をまとめて取得する。
- * items.nth(i) をロケータのまま filter({ has }) で再検索すると、テーブルの描画状況によって
- * ページ全体でのインデックス解決がずれることがあるため、elementHandle 経由で確実に同一要素から辿る。
- * @returns {Promise<{holidayValue: string|null, isUnregistered: boolean} | null>}
- */
-async function inspectRowForDateParagraph(pLocator) {
-  const handle = await pLocator.elementHandle();
-  if (!handle) return null;
-  try {
-    return await handle.evaluate((el) => {
-      const tr = el.closest('tr');
-      if (!tr) return null;
-      const select = tr.querySelector('select');
-      const holidayValue = select ? select.value : null;
-      const cells = [...tr.querySelectorAll('td, [role="gridcell"]')];
-      const times = cells
-        .map((c) => (c.textContent || '').trim())
-        .filter((t) => /^\d{1,2}:\d{2}$/.test(t));
-      const isUnregistered = times.length > 0 && times.every((t) => t === '00:00');
-      return { holidayValue, isUnregistered };
-    });
-  } finally {
-    await handle.dispose();
-  }
-}
-
-async function clickScheduleInWeekIncludingRunDay(page) {
-  const selector = process.env.DATE_PARAGRAPH_SELECTOR?.trim() || DEFAULT_DATE_PARAGRAPH_SELECTOR;
-  const scheduleCtx = getScheduleYearMonth();
-  const { start: windowStart, end: windowEnd } = getScheduleDateWindowIncludingRunDay();
-  console.log(
-    `日程の年月コンテキスト: ${scheduleCtx.year}年${scheduleCtx.monthIndex + 1}月（SCHEDULE_YEAR / SCHEDULE_MONTH で変更可）`,
-  );
-  console.log(
-    `更新対象の日付範囲（実行日を含む7日間）: ${windowStart.toLocaleDateString('ja-JP')} ～ ${windowEnd.toLocaleDateString('ja-JP')}（未来日は除外）`,
-  );
-
+function loadTimesheetMap({ required = false } = {}) {
   const csvText = getTimesheetCsvText();
-  const timesheetMap = csvText ? parseTimesheetCsv(csvText) : null;
-  if (timesheetMap) {
-    console.log(`TIMESHEET_CSV を読み込みました（${timesheetMap.size} 件）。始業・終業が空欄の日はスキップします。`);
-  } else {
-    console.log('TIMESHEET_CSV が未設定のため、時刻の上書きは行わず「定時」の既定値のまま処理します。');
+  if (!csvText) {
+    if (required) {
+      throw new Error('RUN_MODE=month_end では TIMESHEET_CSV_PATH または TIMESHEET_CSV が必須です。');
+    }
+    return null;
   }
 
+  const map = parseTimesheetCsv(csvText);
+  console.log(`タイムシートCSVを読み込みました（${map.size} 件）。`);
+  return map;
+}
+
+// ─────────────────────────────────────────────
+// 日程一覧の走査・処理（週次 / 月末確定 共通部分）
+// ─────────────────────────────────────────────
+
+function getAfterUpdateDelayMs() {
+  return getEnvInt('AFTER_UPDATE_MS', 10000);
+}
+
+function getScheduleButtonNames() {
+  return {
+    actionButtonName: getEnvStr('SCHEDULE_ACTION_BUTTON_NAME', '定時'),
+    updateButtonName: getEnvStr('SCHEDULE_UPDATE_BUTTON_NAME', '更新'),
+  };
+}
+
+/** 日付段落一覧が表示されるまで待つ。失敗時は本文の先頭をログに残してから例外を投げる */
+async function waitForDateItems(page, selector) {
   const items = page.locator(selector);
   console.log(`日付要素の待機を開始します（現在のURL: ${page.url()} / タイトル: ${await page.title()}）`);
   try {
@@ -683,18 +728,79 @@ async function clickScheduleInWeekIncludingRunDay(page) {
     );
     throw err;
   }
+  return items;
+}
 
+/** 日付段落のテキストを解釈し、解釈できなければ警告ログを出して null を返す */
+function parseDateItemText(text, i, scheduleCtx) {
+  const parsed = parseDateFromText(text, scheduleCtx);
+  if (!parsed) console.warn(`日付を解釈できません [${i}]: ${text.slice(0, 120)}`);
+  return parsed;
+}
+
+/**
+ * candidates（日付の古い順にソート済み）について「定時」→（CSV指定があれば時刻上書き）→「更新」を実行し、
+ * 最後に AFTER_UPDATE_MS だけ待機する。週次・月末確定の両モードで共通。
+ */
+async function runActionUpdateFlow(page, items, candidates, { actionButtonName, updateButtonName }) {
+  for (const c of candidates) {
+    const rowParagraph = items.nth(c.i);
+    console.log(`行処理: "${c.text}" →「${actionButtonName}」`);
+    await clickNamedButtonNearDateParagraph(rowParagraph, actionButtonName);
+    await waitForNetworkIdle(page);
+
+    if (c.timesheet) {
+      console.log(
+        `行処理: "${c.text}" → CSVの時刻で上書き（始業: ${c.timesheet.start || '変更なし'} / 終業: ${c.timesheet.end || '変更なし'}）`,
+      );
+      await fillRowTimesheetTimes(rowParagraph, c.timesheet);
+      await waitForNetworkIdle(page);
+    }
+
+    console.log(`行処理: "${c.text}" →「${updateButtonName}」`);
+    await clickNamedButtonNearDateParagraph(rowParagraph, updateButtonName, { timeoutMs: 20_000 });
+    await waitForNetworkIdle(page);
+  }
+
+  const afterUpdateMs = getAfterUpdateDelayMs();
+  if (afterUpdateMs > 0) {
+    console.log(`全行処理後、${afterUpdateMs} ms 待機します（AFTER_UPDATE_MS で変更、0 でスキップ）`);
+    await sleep(afterUpdateMs);
+  }
+}
+
+// ─────────────────────────────────────────────
+// 週次モード
+// ─────────────────────────────────────────────
+
+async function clickScheduleInWeekIncludingRunDay(page) {
+  const selector = getEnvStr('DATE_PARAGRAPH_SELECTOR', DEFAULT_DATE_PARAGRAPH_SELECTOR);
+  const scheduleCtx = getScheduleYearMonth();
+  const { start: windowStart, end: windowEnd } = getScheduleDateWindowIncludingRunDay();
+  console.log(
+    `日程の年月コンテキスト: ${scheduleCtx.year}年${scheduleCtx.monthIndex + 1}月（SCHEDULE_YEAR / SCHEDULE_MONTH で変更可）`,
+  );
+  console.log(
+    `更新対象の日付範囲（実行日を含む7日間）: ${windowStart.toLocaleDateString('ja-JP')} ～ ${windowEnd.toLocaleDateString('ja-JP')}（未来日は除外）`,
+  );
+
+  const timesheetMap = loadTimesheetMap();
+  if (timesheetMap) {
+    console.log('始業・終業が空欄の日はスキップします。');
+  } else {
+    console.log('タイムシートCSVが未設定のため、時刻の上書きは行わず「定時」の既定値のまま処理します。');
+  }
+
+  const items = await waitForDateItems(page, selector);
   const n = await items.count();
   const candidates = [];
 
   for (let i = 0; i < n; i++) {
     const p = items.nth(i);
     const text = (await p.textContent())?.trim() || '';
-    const parsed = parseDateFromText(text, scheduleCtx);
-    if (!parsed) {
-      console.warn(`日付を解釈できません [${i}]: ${text.slice(0, 120)}`);
-      continue;
-    }
+    const parsed = parseDateItemText(text, i, scheduleCtx);
+    if (!parsed) continue;
+
     const t = parsed.getTime();
     if (t > windowEnd.getTime()) continue; // 未来日は対象外
 
@@ -746,8 +852,7 @@ async function clickScheduleInWeekIncludingRunDay(page) {
 
   candidates.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  const actionButtonName = process.env.SCHEDULE_ACTION_BUTTON_NAME?.trim() || '定時';
-  const updateButtonName = process.env.SCHEDULE_UPDATE_BUTTON_NAME?.trim() || '更新';
+  const { actionButtonName, updateButtonName } = getScheduleButtonNames();
 
   console.log(
     `上記7日間の ${candidates.length} 日について、月・水は「定時」前にチェックのみ、火・木・金は「定時」前に申請〜交通費テンプレート→保存、その後各行「${actionButtonName}」→「${updateButtonName}」（日付の古い順）`,
@@ -771,75 +876,38 @@ async function clickScheduleInWeekIncludingRunDay(page) {
     }
   }
 
-  for (const c of candidates) {
-    const rowParagraph = items.nth(c.i);
-    console.log(`行処理: "${c.text}" →「${actionButtonName}」`);
-    await clickNamedButtonNearDateParagraph(rowParagraph, actionButtonName);
-    await waitForNetworkIdle(page);
-
-    if (c.timesheet) {
-      console.log(
-        `行処理: "${c.text}" → CSVの時刻で上書き（始業: ${c.timesheet.start || '変更なし'} / 終業: ${c.timesheet.end || '変更なし'}）`,
-      );
-      await fillRowTimesheetTimes(rowParagraph, c.timesheet);
-      await waitForNetworkIdle(page);
-    }
-
-    console.log(`行処理: "${c.text}" →「${updateButtonName}」`);
-    await clickNamedButtonNearDateParagraph(rowParagraph, updateButtonName, { timeoutMs: 20_000 });
-    await waitForNetworkIdle(page);
-  }
-
-  const afterUpdateMs = getAfterUpdateDelayMs();
-  if (afterUpdateMs > 0) {
-    console.log(`全行処理後、${afterUpdateMs} ms 待機します（AFTER_UPDATE_MS で変更、0 でスキップ）`);
-    await sleep(afterUpdateMs);
-  }
+  await runActionUpdateFlow(page, items, candidates, { actionButtonName, updateButtonName });
 }
+
+// ─────────────────────────────────────────────
+// 月末確定モード
+// ─────────────────────────────────────────────
 
 /**
  * 月末確定モード: SCHEDULE_YEAR/SCHEDULE_MONTH で指定した対象月の全日（未来日は除く）について、
- * TIMESHEET_CSV に値がある日だけ「定時」→ 時刻上書き →「更新」を行う。
+ * タイムシートCSVに値がある日だけ「定時」→ 時刻上書き →「更新」を行う。
  * 既に週次実行で登録済みの日も対象月であれば上書きする。テレワークチェック・交通費申請フローは行わない。
  */
 async function clickScheduleForMonthEndFinalize(page) {
-  const csvText = getTimesheetCsvText();
-  if (!csvText) {
-    throw new Error('RUN_MODE=month_end では TIMESHEET_CSV が必須です。');
-  }
-  const timesheetMap = parseTimesheetCsv(csvText);
-  console.log(`TIMESHEET_CSV を読み込みました（${timesheetMap.size} 件）。`);
+  const timesheetMap = loadTimesheetMap({ required: true });
 
-  const selector = process.env.DATE_PARAGRAPH_SELECTOR?.trim() || DEFAULT_DATE_PARAGRAPH_SELECTOR;
+  const selector = getEnvStr('DATE_PARAGRAPH_SELECTOR', DEFAULT_DATE_PARAGRAPH_SELECTOR);
   const scheduleCtx = getScheduleYearMonth();
   const today = endOfLocalToday();
   console.log(
     `月末確定モード 対象年月: ${scheduleCtx.year}年${scheduleCtx.monthIndex + 1}月（SCHEDULE_YEAR / SCHEDULE_MONTH で変更可）`,
   );
 
-  const items = page.locator(selector);
-  console.log(`日付要素の待機を開始します（現在のURL: ${page.url()} / タイトル: ${await page.title()}）`);
-  try {
-    await items.first().waitFor({ state: 'visible', timeout: 30_000 });
-  } catch (err) {
-    const bodySnippet = (await page.locator('body').innerText().catch(() => '')).slice(0, 500);
-    console.error(
-      `日付要素の待機に失敗しました。現在のURL: ${page.url()} / タイトル: ${await page.title()}\n本文の先頭:\n${bodySnippet}`,
-    );
-    throw err;
-  }
-
+  const items = await waitForDateItems(page, selector);
   const n = await items.count();
   const candidates = [];
 
   for (let i = 0; i < n; i++) {
     const p = items.nth(i);
     const text = (await p.textContent())?.trim() || '';
-    const parsed = parseDateFromText(text, scheduleCtx);
-    if (!parsed) {
-      console.warn(`日付を解釈できません [${i}]: ${text.slice(0, 120)}`);
-      continue;
-    }
+    const parsed = parseDateItemText(text, i, scheduleCtx);
+    if (!parsed) continue;
+
     if (parsed.getFullYear() !== scheduleCtx.year || parsed.getMonth() !== scheduleCtx.monthIndex) {
       continue; // 対象月以外（前後月の行）は対象外
     }
@@ -863,40 +931,22 @@ async function clickScheduleForMonthEndFinalize(page) {
 
   candidates.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  const actionButtonName = process.env.SCHEDULE_ACTION_BUTTON_NAME?.trim() || '定時';
-  const updateButtonName = process.env.SCHEDULE_UPDATE_BUTTON_NAME?.trim() || '更新';
+  const { actionButtonName, updateButtonName } = getScheduleButtonNames();
 
   console.log(`月末確定対象の ${candidates.length} 日について「${actionButtonName}」→ 時刻上書き →「${updateButtonName}」（日付の古い順）`);
 
-  for (const c of candidates) {
-    const rowParagraph = items.nth(c.i);
-    console.log(`行処理: "${c.text}" →「${actionButtonName}」`);
-    await clickNamedButtonNearDateParagraph(rowParagraph, actionButtonName);
-    await waitForNetworkIdle(page);
-
-    console.log(
-      `行処理: "${c.text}" → CSVの時刻で上書き（始業: ${c.timesheet.start || '変更なし'} / 終業: ${c.timesheet.end || '変更なし'}）`,
-    );
-    await fillRowTimesheetTimes(rowParagraph, c.timesheet);
-    await waitForNetworkIdle(page);
-
-    console.log(`行処理: "${c.text}" →「${updateButtonName}」`);
-    await clickNamedButtonNearDateParagraph(rowParagraph, updateButtonName, { timeoutMs: 20_000 });
-    await waitForNetworkIdle(page);
-  }
-
-  const afterUpdateMs = getAfterUpdateDelayMs();
-  if (afterUpdateMs > 0) {
-    console.log(`全行処理後、${afterUpdateMs} ms 待機します（AFTER_UPDATE_MS で変更、0 でスキップ）`);
-    await sleep(afterUpdateMs);
-  }
+  await runActionUpdateFlow(page, items, candidates, { actionButtonName, updateButtonName });
 }
+
+// ─────────────────────────────────────────────
+// エントリーポイント
+// ─────────────────────────────────────────────
 
 (async () => {
   const loginUrl = requireEnv('LOGIN_URL');
   const email = requireEnv('LOGIN_EMAIL');
   const password = requireEnv('LOGIN_PASSWORD');
-  const loginButtonName = process.env.LOGIN_BUTTON_NAME?.trim() || 'Login';
+  const loginButtonName = getEnvStr('LOGIN_BUTTON_NAME', 'Login');
 
   const headless = !(process.env.HEADED === '1' || process.env.HEADLESS === '0');
 
@@ -928,17 +978,10 @@ async function clickScheduleForMonthEndFinalize(page) {
 
     console.log(`ログイン後のURL: ${page.url()} / タイトル: ${await page.title()}`);
 
-    console.log('遷移:', PORTAL_PAGE_A);
-    await page.goto(PORTAL_PAGE_A, { waitUntil: 'domcontentloaded' });
-    await waitForNetworkIdle(page);
-    console.log(`遷移後のURL: ${page.url()}`);
+    await gotoAndWait(page, PORTAL_PAGE_A);
+    await gotoAndWait(page, PORTAL_PAGE_B);
 
-    console.log('遷移:', PORTAL_PAGE_B);
-    await page.goto(PORTAL_PAGE_B, { waitUntil: 'domcontentloaded' });
-    await waitForNetworkIdle(page);
-    console.log(`遷移後のURL: ${page.url()}`);
-
-    const runMode = process.env.RUN_MODE?.trim() || 'weekly';
+    const runMode = getEnvStr('RUN_MODE', 'weekly');
     if (runMode === 'month_end') {
       console.log('RUN_MODE=month_end: 月末確定モードで実行します。');
       await clickScheduleForMonthEndFinalize(page);
