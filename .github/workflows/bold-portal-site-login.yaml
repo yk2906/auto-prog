@@ -51,6 +51,7 @@ jobs:
     steps:
       - name: Determine run mode
         id: mode
+        working-directory: .
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "run_mode=${{ inputs.run_mode }}" >> "$GITHUB_OUTPUT"
