@@ -3,15 +3,31 @@
 #   BOLD_LOGIN_URL       ログインページの URL
 #   BOLD_LOGIN_EMAIL     ログインメール
 #   BOLD_LOGIN_PASSWORD  ログインパスワード
+#   BOLD_TIMESHEET_CSV   月末確定モード（RUN_MODE=month_end）で使う「日付,始業時刻,終業時刻」CSV（任意。未設定なら月末確定は失敗する）
 #
-# 手動実行: Actions タブ → 「Bold portal site-login」→ Run workflow
+# 手動実行: Actions タブ → 「Bold portal site-login」→ Run workflow（run_mode を weekly / month_end から選択可）
+#
+# スケジュール:
+#   毎週金曜 23:30 JST … 週次実行（直近7日間の「定時」処理）
+#   毎月28〜31日 18:45 JST … 月末確定実行（TIMESHEET_CSVの時刻で対象月全日を上書き）。
+#     cron は「28〜31日」を毎月無条件に発火するため、実行日の翌日が1日（＝実際の月末）の場合のみ処理する
 
 name: Bold portal site-login
 
 on:
   workflow_dispatch:
+    inputs:
+      run_mode:
+        description: '実行モード'
+        required: false
+        default: weekly
+        type: choice
+        options:
+          - weekly
+          - month_end
   schedule:
-    - cron: '30 14 * * 5'  # 毎週金曜 23:30 JST (UTC+9)
+    - cron: '30 14 * * 5'    # 毎週金曜 23:30 JST (UTC+9) … 週次実行
+    - cron: '45 9 28-31 * *' # 毎月28〜31日 18:45 JST (UTC+9) … 月末確定実行（実際の月末のみ処理）
 
 concurrency:
   group: bold-portal-site-login
@@ -33,10 +49,31 @@ jobs:
         working-directory: playwright
 
     steps:
+      - name: Determine run mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run_mode=${{ inputs.run_mode }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "${{ github.event.schedule }}" = "45 9 28-31 * *" ]; then
+            TOMORROW_DAY=$(TZ=Asia/Tokyo date -d tomorrow +%d)
+            if [ "$TOMORROW_DAY" = "01" ]; then
+              echo "run_mode=month_end" >> "$GITHUB_OUTPUT"
+            else
+              echo "run_mode=skip" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "run_mode=weekly" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
+        if: steps.mode.outputs.run_mode != 'skip'
         uses: actions/checkout@v7
 
       - name: Setup Node.js
+        if: steps.mode.outputs.run_mode != 'skip'
         uses: actions/setup-node@v7
         with:
           node-version: '20'
@@ -44,14 +81,19 @@ jobs:
           cache-dependency-path: playwright/package-lock.json
 
       - name: Install dependencies
+        if: steps.mode.outputs.run_mode != 'skip'
         run: npm ci
 
       - name: Install Playwright browsers
+        if: steps.mode.outputs.run_mode != 'skip'
         run: npx playwright install chromium --with-deps
 
       - name: Run site-login.js
+        if: steps.mode.outputs.run_mode != 'skip'
         env:
           LOGIN_URL: ${{ secrets.BOLD_LOGIN_URL }}
           LOGIN_EMAIL: ${{ secrets.BOLD_LOGIN_EMAIL }}
           LOGIN_PASSWORD: ${{ secrets.BOLD_LOGIN_PASSWORD }}
+          RUN_MODE: ${{ steps.mode.outputs.run_mode }}
+          TIMESHEET_CSV: ${{ secrets.BOLD_TIMESHEET_CSV }}
         run: node site-login/site-login.js

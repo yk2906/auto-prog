@@ -33,6 +33,16 @@
  *   SCHEDULE_APPLY_BUTTON_NAME   行の「申請」ボタン表示名（既定: 申請）
  *   EXPENSE_ACCORDION_LABEL      モーダル内アコーディオンの見出しテキスト（既定: 交通費 1）
  *   LEGACY_LOGIN_LINK_NAME       ログインページの遷移リンク表示名（既定: 従来のログインはこちら）
+ *   TIMESHEET_CSV                「日付,始業時刻,終業時刻」形式の生CSV（例: " 7/1,09:00,18:15"）。
+ *                                 日付は年なしの M/D 形式。未設定時は「定時」押下のみで時刻上書きは行わない。
+ *                                 始業・終業が両方空欄の行はその日を丸ごとスキップする（休日・公休扱い）。
+ *   START_TIME_INPUT_SELECTOR    始業時刻の入力欄セレクタ（既定は下記 DEFAULT_START_TIME_INPUT_SELECTOR）
+ *   END_TIME_INPUT_SELECTOR      終業時刻の入力欄セレクタ（既定は下記 DEFAULT_END_TIME_INPUT_SELECTOR）
+ *   START_TIME_COLUMN_INDEX      セレクタで見つからない場合のフォールバック列（0始まり。既定: 2）
+ *   END_TIME_COLUMN_INDEX        セレクタで見つからない場合のフォールバック列（0始まり。既定: 3）
+ *   RUN_MODE                     weekly（既定・従来の直近7日間処理）/ month_end（月末確定。
+ *                                 SCHEDULE_YEAR/SCHEDULE_MONTH で指定した対象月の全日にTIMESHEET_CSVの
+ *                                 時刻を上書きする。テレワークチェック・交通費申請フローは実行しない）
  */
 // ローカルおよび GitHub Actions (UTC) の両環境で JST として動作させる
 process.env.TZ = 'Asia/Tokyo';
@@ -47,6 +57,11 @@ const DEFAULT_DATE_PARAGRAPH_SELECTOR = 'p.chakra-text.css-fivo40';
 const DEFAULT_ROW_CHECKBOX_SELECTOR = 'span.chakra-checkbox__control, [class*="chakra-checkbox__control"]';
 const DEFAULT_ROW_CHECKBOX_INPUT_SELECTOR =
   'input.chakra-checkbox__input, input[type="checkbox"][class*="chakra-checkbox__input"]';
+/** サイトの実際のDOMに合わせて START_TIME_INPUT_SELECTOR / END_TIME_INPUT_SELECTOR で上書きする */
+const DEFAULT_START_TIME_INPUT_SELECTOR =
+  'input[aria-label*="始業"], input[aria-label*="出勤"], input[name*="start" i], input[placeholder*="始業"]';
+const DEFAULT_END_TIME_INPUT_SELECTOR =
+  'input[aria-label*="終業"], input[aria-label*="退勤"], input[name*="end" i], input[placeholder*="終業"]';
 
 function requireEnv(name) {
   const v = process.env[name];
@@ -507,6 +522,92 @@ async function ensureRowChakraCheckboxCheckedNearDateParagraph(pLocator, options
   );
 }
 
+function getTimesheetCsvText() {
+  const raw = process.env.TIMESHEET_CSV;
+  if (!raw || !raw.trim()) return null;
+  return raw;
+}
+
+/**
+ * 「日付,始業時刻,終業時刻」形式のCSV（日付は年なし M/D）を解析し、
+ * "M/D" → { start, end, blank } の Map を返す。blank は始業・終業が両方空欄の行。
+ */
+function parseTimesheetCsv(csvText) {
+  const lines = csvText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  const map = new Map();
+  for (const line of lines) {
+    const cols = line.split(',').map((c) => c.trim());
+    const dm = cols[0]?.match(/^(\d{1,2})\/(\d{1,2})$/);
+    if (!dm) continue; // ヘッダー行や解釈できない行はスキップ
+
+    const start = cols[1] || '';
+    const end = cols[2] || '';
+    map.set(`${parseInt(dm[1], 10)}/${parseInt(dm[2], 10)}`, { start, end, blank: !start && !end });
+  }
+  return map;
+}
+
+function timesheetKeyForDate(d) {
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+async function locateTableRowForDateParagraph(pLocator) {
+  const page = pLocator.page();
+  const candidates = [
+    page.locator('tbody tr[role="row"]').filter({ has: pLocator }),
+    page.locator('tr[role="row"]').filter({ has: pLocator }),
+    page.locator('tbody tr').filter({ has: pLocator }),
+  ];
+  for (const row of candidates) {
+    if ((await row.count()) > 0) return row.first();
+  }
+  return pLocator.locator('xpath=./ancestor::tr[1]');
+}
+
+/** CSVの始業・終業時刻を同一行の時刻入力欄に反映する（値が空の側はスキップ） */
+async function fillRowTimesheetTimes(pLocator, timesheet) {
+  const startSelector = process.env.START_TIME_INPUT_SELECTOR?.trim() || DEFAULT_START_TIME_INPUT_SELECTOR;
+  const endSelector = process.env.END_TIME_INPUT_SELECTOR?.trim() || DEFAULT_END_TIME_INPUT_SELECTOR;
+  const startColIndex = (() => {
+    const n = parseInt(process.env.START_TIME_COLUMN_INDEX?.trim() || '', 10);
+    return Number.isFinite(n) && n >= 0 ? n : 2;
+  })();
+  const endColIndex = (() => {
+    const n = parseInt(process.env.END_TIME_COLUMN_INDEX?.trim() || '', 10);
+    return Number.isFinite(n) && n >= 0 ? n : 3;
+  })();
+
+  const row = await locateTableRowForDateParagraph(pLocator);
+
+  const fillField = async (selector, colIndex, value, label) => {
+    if (!value) return;
+
+    let input = row.locator(selector).first();
+    if ((await input.count()) === 0) {
+      const cells = row.locator('td, [role="gridcell"]');
+      if ((await cells.count()) > colIndex) {
+        input = cells.nth(colIndex).locator('input').first();
+      }
+    }
+    if ((await input.count()) === 0) {
+      throw new Error(
+        `${label}の入力欄が見つかりません（START_TIME_INPUT_SELECTOR / END_TIME_INPUT_SELECTOR や列番号を確認してください）`,
+      );
+    }
+
+    await input.scrollIntoViewIfNeeded().catch(() => {});
+    await input.fill(value);
+    await input.evaluate((el) => el.blur?.()).catch(() => {});
+  };
+
+  await fillField(startSelector, startColIndex, timesheet.start, '始業時刻');
+  await fillField(endSelector, endColIndex, timesheet.end, '終業時刻');
+}
+
 function isMondayOrWednesday(d) {
   const wd = d.getDay();
   return wd === 1 || wd === 3;
@@ -560,6 +661,14 @@ async function clickScheduleInWeekIncludingRunDay(page) {
     `更新対象の日付範囲（実行日を含む7日間）: ${windowStart.toLocaleDateString('ja-JP')} ～ ${windowEnd.toLocaleDateString('ja-JP')}（未来日は除外）`,
   );
 
+  const csvText = getTimesheetCsvText();
+  const timesheetMap = csvText ? parseTimesheetCsv(csvText) : null;
+  if (timesheetMap) {
+    console.log(`TIMESHEET_CSV を読み込みました（${timesheetMap.size} 件）。始業・終業が空欄の日はスキップします。`);
+  } else {
+    console.log('TIMESHEET_CSV が未設定のため、時刻の上書きは行わず「定時」の既定値のまま処理します。');
+  }
+
   const items = page.locator(selector);
   console.log(`日付要素の待機を開始します（現在のURL: ${page.url()} / タイトル: ${await page.title()}）`);
   try {
@@ -586,10 +695,17 @@ async function clickScheduleInWeekIncludingRunDay(page) {
     const t = parsed.getTime();
     if (t > windowEnd.getTime()) continue; // 未来日は対象外
 
+    const tsEntry = timesheetMap ? timesheetMap.get(timesheetKeyForDate(parsed)) : undefined;
+    if (tsEntry?.blank) {
+      console.log(`日程（CSV: 始業・終業が空欄のためスキップ）: "${text}"`);
+      continue;
+    }
+    const timesheet = tsEntry && !tsEntry.blank ? { start: tsEntry.start, end: tsEntry.end } : null;
+
     if (t >= windowStart.getTime()) {
       const windowInfo = await inspectRowForDateParagraph(p);
       const isPublicHoliday = windowInfo?.holidayValue === 'public_holiday';
-      candidates.push({ i, date: parsed, text, isPublicHoliday });
+      candidates.push({ i, date: parsed, text, isPublicHoliday, timesheet });
       console.log(`日程（7日以内の候補）: "${text}" → ${parsed.toLocaleDateString('ja-JP')}`);
       continue;
     }
@@ -612,7 +728,7 @@ async function clickScheduleInWeekIncludingRunDay(page) {
     }
 
     if (info.isUnregistered) {
-      candidates.push({ i, date: parsed, text, isPublicHoliday: false });
+      candidates.push({ i, date: parsed, text, isPublicHoliday: false, timesheet });
       console.log(`日程（未更新のため追加）: "${text}" → ${parsed.toLocaleDateString('ja-JP')}`);
     } else {
       console.log(`日程（過去日・スキップ: 登録済みと判定）: "${text}"`);
@@ -656,6 +772,109 @@ async function clickScheduleInWeekIncludingRunDay(page) {
     const rowParagraph = items.nth(c.i);
     console.log(`行処理: "${c.text}" →「${actionButtonName}」`);
     await clickNamedButtonNearDateParagraph(rowParagraph, actionButtonName);
+    await waitForNetworkIdle(page);
+
+    if (c.timesheet) {
+      console.log(
+        `行処理: "${c.text}" → CSVの時刻で上書き（始業: ${c.timesheet.start || '変更なし'} / 終業: ${c.timesheet.end || '変更なし'}）`,
+      );
+      await fillRowTimesheetTimes(rowParagraph, c.timesheet);
+      await waitForNetworkIdle(page);
+    }
+
+    console.log(`行処理: "${c.text}" →「${updateButtonName}」`);
+    await clickNamedButtonNearDateParagraph(rowParagraph, updateButtonName, { timeoutMs: 20_000 });
+    await waitForNetworkIdle(page);
+  }
+
+  const afterUpdateMs = getAfterUpdateDelayMs();
+  if (afterUpdateMs > 0) {
+    console.log(`全行処理後、${afterUpdateMs} ms 待機します（AFTER_UPDATE_MS で変更、0 でスキップ）`);
+    await sleep(afterUpdateMs);
+  }
+}
+
+/**
+ * 月末確定モード: SCHEDULE_YEAR/SCHEDULE_MONTH で指定した対象月の全日（未来日は除く）について、
+ * TIMESHEET_CSV に値がある日だけ「定時」→ 時刻上書き →「更新」を行う。
+ * 既に週次実行で登録済みの日も対象月であれば上書きする。テレワークチェック・交通費申請フローは行わない。
+ */
+async function clickScheduleForMonthEndFinalize(page) {
+  const csvText = getTimesheetCsvText();
+  if (!csvText) {
+    throw new Error('RUN_MODE=month_end では TIMESHEET_CSV が必須です。');
+  }
+  const timesheetMap = parseTimesheetCsv(csvText);
+  console.log(`TIMESHEET_CSV を読み込みました（${timesheetMap.size} 件）。`);
+
+  const selector = process.env.DATE_PARAGRAPH_SELECTOR?.trim() || DEFAULT_DATE_PARAGRAPH_SELECTOR;
+  const scheduleCtx = getScheduleYearMonth();
+  const today = endOfLocalToday();
+  console.log(
+    `月末確定モード 対象年月: ${scheduleCtx.year}年${scheduleCtx.monthIndex + 1}月（SCHEDULE_YEAR / SCHEDULE_MONTH で変更可）`,
+  );
+
+  const items = page.locator(selector);
+  console.log(`日付要素の待機を開始します（現在のURL: ${page.url()} / タイトル: ${await page.title()}）`);
+  try {
+    await items.first().waitFor({ state: 'visible', timeout: 30_000 });
+  } catch (err) {
+    const bodySnippet = (await page.locator('body').innerText().catch(() => '')).slice(0, 500);
+    console.error(
+      `日付要素の待機に失敗しました。現在のURL: ${page.url()} / タイトル: ${await page.title()}\n本文の先頭:\n${bodySnippet}`,
+    );
+    throw err;
+  }
+
+  const n = await items.count();
+  const candidates = [];
+
+  for (let i = 0; i < n; i++) {
+    const p = items.nth(i);
+    const text = (await p.textContent())?.trim() || '';
+    const parsed = parseDateFromText(text, scheduleCtx);
+    if (!parsed) {
+      console.warn(`日付を解釈できません [${i}]: ${text.slice(0, 120)}`);
+      continue;
+    }
+    if (parsed.getFullYear() !== scheduleCtx.year || parsed.getMonth() !== scheduleCtx.monthIndex) {
+      continue; // 対象月以外（前後月の行）は対象外
+    }
+    if (parsed.getTime() > today.getTime()) continue; // 未来日は対象外
+
+    const tsEntry = timesheetMap.get(timesheetKeyForDate(parsed));
+    if (!tsEntry || tsEntry.blank) {
+      console.log(`日程（CSV未指定または空欄のためスキップ）: "${text}"`);
+      continue;
+    }
+
+    candidates.push({ i, date: parsed, text, timesheet: { start: tsEntry.start, end: tsEntry.end } });
+    console.log(`日程（月末確定の対象）: "${text}" → ${parsed.toLocaleDateString('ja-JP')}`);
+  }
+
+  if (candidates.length === 0) {
+    throw new Error(
+      '月末確定モードの対象となる日程が1件もありません。TIMESHEET_CSVの内容やSCHEDULE_YEAR/SCHEDULE_MONTHを確認してください。',
+    );
+  }
+
+  candidates.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  const actionButtonName = process.env.SCHEDULE_ACTION_BUTTON_NAME?.trim() || '定時';
+  const updateButtonName = process.env.SCHEDULE_UPDATE_BUTTON_NAME?.trim() || '更新';
+
+  console.log(`月末確定対象の ${candidates.length} 日について「${actionButtonName}」→ 時刻上書き →「${updateButtonName}」（日付の古い順）`);
+
+  for (const c of candidates) {
+    const rowParagraph = items.nth(c.i);
+    console.log(`行処理: "${c.text}" →「${actionButtonName}」`);
+    await clickNamedButtonNearDateParagraph(rowParagraph, actionButtonName);
+    await waitForNetworkIdle(page);
+
+    console.log(
+      `行処理: "${c.text}" → CSVの時刻で上書き（始業: ${c.timesheet.start || '変更なし'} / 終業: ${c.timesheet.end || '変更なし'}）`,
+    );
+    await fillRowTimesheetTimes(rowParagraph, c.timesheet);
     await waitForNetworkIdle(page);
 
     console.log(`行処理: "${c.text}" →「${updateButtonName}」`);
@@ -716,7 +935,13 @@ async function clickScheduleInWeekIncludingRunDay(page) {
     await waitForNetworkIdle(page);
     console.log(`遷移後のURL: ${page.url()}`);
 
-    await clickScheduleInWeekIncludingRunDay(page);
+    const runMode = process.env.RUN_MODE?.trim() || 'weekly';
+    if (runMode === 'month_end') {
+      console.log('RUN_MODE=month_end: 月末確定モードで実行します。');
+      await clickScheduleForMonthEndFinalize(page);
+    } else {
+      await clickScheduleInWeekIncludingRunDay(page);
+    }
 
     console.log('最終ページのタイトル:', await page.title());
   } finally {
