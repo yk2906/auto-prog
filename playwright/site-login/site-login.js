@@ -36,10 +36,9 @@
  *   TIMESHEET_CSV                「日付,始業時刻,終業時刻」形式の生CSV（例: " 7/1,09:00,18:15"）。
  *                                 日付は年なしの M/D 形式。未設定時は「定時」押下のみで時刻上書きは行わない。
  *                                 始業・終業が両方空欄の行はその日を丸ごとスキップする（休日・公休扱い）。
- *   START_TIME_INPUT_SELECTOR    始業時刻の入力欄セレクタ（既定は下記 DEFAULT_START_TIME_INPUT_SELECTOR）
- *   END_TIME_INPUT_SELECTOR      終業時刻の入力欄セレクタ（既定は下記 DEFAULT_END_TIME_INPUT_SELECTOR）
- *   START_TIME_COLUMN_INDEX      セレクタで見つからない場合のフォールバック列（0始まり。既定: 2）
- *   END_TIME_COLUMN_INDEX        セレクタで見つからない場合のフォールバック列（0始まり。既定: 3）
+ *   TIME_INPUT_SELECTOR          行内の時刻入力欄セレクタ（既定: input[type="time"]。始業・終業・休憩の順で並ぶ）
+ *   START_TIME_INPUT_INDEX       時刻入力欄のうち始業が何番目か（0始まり。既定: 0）
+ *   END_TIME_INPUT_INDEX         時刻入力欄のうち終業が何番目か（0始まり。既定: 1）
  *   RUN_MODE                     weekly（既定・従来の直近7日間処理）/ month_end（月末確定。
  *                                 SCHEDULE_YEAR/SCHEDULE_MONTH で指定した対象月の全日にTIMESHEET_CSVの
  *                                 時刻を上書きする。テレワークチェック・交通費申請フローは実行しない）
@@ -57,11 +56,6 @@ const DEFAULT_DATE_PARAGRAPH_SELECTOR = 'p.chakra-text.css-fivo40';
 const DEFAULT_ROW_CHECKBOX_SELECTOR = 'span.chakra-checkbox__control, [class*="chakra-checkbox__control"]';
 const DEFAULT_ROW_CHECKBOX_INPUT_SELECTOR =
   'input.chakra-checkbox__input, input[type="checkbox"][class*="chakra-checkbox__input"]';
-/** サイトの実際のDOMに合わせて START_TIME_INPUT_SELECTOR / END_TIME_INPUT_SELECTOR で上書きする */
-const DEFAULT_START_TIME_INPUT_SELECTOR =
-  'input[aria-label*="始業"], input[aria-label*="出勤"], input[name*="start" i], input[placeholder*="始業"]';
-const DEFAULT_END_TIME_INPUT_SELECTOR =
-  'input[aria-label*="終業"], input[aria-label*="退勤"], input[name*="end" i], input[placeholder*="終業"]';
 
 function requireEnv(name) {
   const v = process.env[name];
@@ -568,36 +562,34 @@ async function locateTableRowForDateParagraph(pLocator) {
   return pLocator.locator('xpath=./ancestor::tr[1]');
 }
 
-/** CSVの始業・終業時刻を同一行の時刻入力欄に反映する（値が空の側はスキップ） */
+/**
+ * CSVの始業・終業時刻を同一行の時刻入力欄に反映する（値が空の側はスキップ）。
+ * 行内には <input type="time"> が「始業・終業・休憩」の順で3つ並んでおり、
+ * 始業=0番目・終業=1番目（既定）。休憩欄は HH:MM:SS 形式で他と異なるため対象外。
+ */
 async function fillRowTimesheetTimes(pLocator, timesheet) {
-  const startSelector = process.env.START_TIME_INPUT_SELECTOR?.trim() || DEFAULT_START_TIME_INPUT_SELECTOR;
-  const endSelector = process.env.END_TIME_INPUT_SELECTOR?.trim() || DEFAULT_END_TIME_INPUT_SELECTOR;
-  const startColIndex = (() => {
-    const n = parseInt(process.env.START_TIME_COLUMN_INDEX?.trim() || '', 10);
-    return Number.isFinite(n) && n >= 0 ? n : 2;
+  const timeInputSelector = process.env.TIME_INPUT_SELECTOR?.trim() || 'input[type="time"]';
+  const startNth = (() => {
+    const n = parseInt(process.env.START_TIME_INPUT_INDEX?.trim() || '', 10);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
   })();
-  const endColIndex = (() => {
-    const n = parseInt(process.env.END_TIME_COLUMN_INDEX?.trim() || '', 10);
-    return Number.isFinite(n) && n >= 0 ? n : 3;
+  const endNth = (() => {
+    const n = parseInt(process.env.END_TIME_INPUT_INDEX?.trim() || '', 10);
+    return Number.isFinite(n) && n >= 0 ? n : 1;
   })();
 
   const row = await locateTableRowForDateParagraph(pLocator);
+  const timeInputs = row.locator(timeInputSelector);
 
-  const fillField = async (selector, colIndex, value, label) => {
+  const fillField = async (nth, value, label) => {
     if (!value) return;
 
-    let input = row.locator(selector).first();
-    if ((await input.count()) === 0) {
-      const cells = row.locator('td, [role="gridcell"]');
-      if ((await cells.count()) > colIndex) {
-        input = cells.nth(colIndex).locator('input').first();
-      }
-    }
+    const input = timeInputs.nth(nth);
     if ((await input.count()) === 0) {
       const rowHtml = await row.evaluate((el) => el.outerHTML).catch(() => '(取得失敗)');
       console.error(`[デバッグ] ${label}探索対象の行HTML:\n${rowHtml.slice(0, 4000)}`);
       throw new Error(
-        `${label}の入力欄が見つかりません（START_TIME_INPUT_SELECTOR / END_TIME_INPUT_SELECTOR や列番号を確認してください）`,
+        `${label}の入力欄（${nth}番目の ${timeInputSelector}）が見つかりません（TIME_INPUT_SELECTOR / START_TIME_INPUT_INDEX / END_TIME_INPUT_INDEX を確認してください）`,
       );
     }
 
@@ -606,8 +598,8 @@ async function fillRowTimesheetTimes(pLocator, timesheet) {
     await input.evaluate((el) => el.blur?.()).catch(() => {});
   };
 
-  await fillField(startSelector, startColIndex, timesheet.start, '始業時刻');
-  await fillField(endSelector, endColIndex, timesheet.end, '終業時刻');
+  await fillField(startNth, timesheet.start, '始業時刻');
+  await fillField(endNth, timesheet.end, '終業時刻');
 }
 
 function isMondayOrWednesday(d) {
