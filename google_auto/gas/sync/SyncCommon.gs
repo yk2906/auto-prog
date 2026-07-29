@@ -159,6 +159,11 @@ function writeShallowReport(ss, targetSheet, syncMap, results, shallowResults, s
     targetSheet.getRange(shallowTimeCells[j]).setValue('');
     collectedTimes.push('');
   }
+  // shallowCellsに対応しない分のshallowTimeCells（同期対象外の手動入力欄）は、
+  // 上書きせず既存値をそのまま集計に含める
+  for (let k = shallowCells.length; k < shallowTimeCells.length; k++) {
+    collectedTimes.push(targetSheet.getRange(shallowTimeCells[k]).getValue());
+  }
 
   const totalMinutes = collectedTimes.reduce((sum, t) => sum + parseStudyTime(t), 0);
   const formattedTotal = formatStudyTime(totalMinutes);
