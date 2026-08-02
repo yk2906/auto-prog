@@ -7,10 +7,10 @@
 ### 日次・月次レポート（`Setup.gs` のプロパティと連携）
 
 - `Code.gs`: 共通関数（設定取得、ファイル操作、ログ出力など）
-- `CopyDocumentReport.gs`: Googleドキュメントの月次コピー
-- `CopySpreadsheetReport.gs`: 日次レポートの自動生成（後述）
-- `CopyMokuhyoukanriReport.gs`: 目標管理レポートの自動生成（生成後、`SyncAbcGoalToProgress.gs` のABC目標セル同期を呼び出す）
-- `SyncAbcGoalToProgress.gs`: ABC目標親フォルダ配下の最新期フォルダから「{期短縮}-ABC目標」を探し、J37/J47/J57/J67/J77 の値を目標管理進捗報告シートの新規タブ（J22/J31/J40/J50/J60）へ同期。ABC目標がxlsx形式の場合は一時的にGoogleスプレッドシートへ変換コピーして読み取り、読み取り後に削除する
+- `copy/CopyDocumentReport.gs`: Googleドキュメントの月次コピー
+- `copy/CopySpreadsheetReport.gs`: 日次レポートの自動生成（後述）
+- `copy/CopyMokuhyoukanriReport.gs`: 目標管理レポートの自動生成（生成後、`SyncAbcGoalToProgress.gs` のABC目標セル同期を呼び出す）
+- `copy/SyncAbcGoalToProgress.gs`: ABC目標親フォルダ配下の最新期フォルダから「{期短縮}-ABC目標」を探し、J37/J47/J57/J67/J77 の値を目標管理進捗報告シートの新規タブ（J22/J31/J40/J50/J60）へ同期。ABC目標がxlsx形式の場合は一時的にGoogleスプレッドシートへ変換コピーして読み取り、読み取り後に削除する
 - `Setup.gs`: 初期設定とトリガー設定
 
 ### その他のスクリプト（各ファイル内の定数・設定を編集して利用）

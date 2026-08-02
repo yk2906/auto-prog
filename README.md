@@ -13,12 +13,10 @@ auto-prog/
 │   ├── config.json           # 設定ファイル（Python用）
 │   └── gas/                  # GAS版スクリプト（ドキュメント/スプレッドシートのコピー系は現在GAS版のみ）
 │       ├── Code.gs
-│       ├── CopyDocumentReport.gs
-│       ├── CopySpreadsheetReport.gs
-│       ├── CopyMokuhyoukanriReport.gs
 │       ├── ConvertDocsToWord.gs
 │       ├── ConvertSheetsToExcel.gs
 │       ├── Setup.gs
+│       ├── copy/             # ドキュメント/スプレッドシートのコピー系スクリプト
 │       ├── objective_sync/   # 目標管理同期スクリプト
 │       ├── sync/             # ObsidianとスプレッドシートのSync
 │       └── README.md
@@ -44,18 +42,18 @@ auto-prog/
 Googleドキュメント／スプレッドシートのコピー系機能は、現在は Python 版を廃止し **GAS版のみ** で提供しています。詳細は [GAS版の使用方法](#gas版の使用方法) を参照してください。
 
 #### 1. Googleドキュメントの月次コピー
-- `google_auto/gas/CopyDocumentReport.gs`
+- `google_auto/gas/copy/CopyDocumentReport.gs`
 - 指定フォルダ内の最新Googleドキュメントを月次でコピー
 - ファイル名: `状況報告書_{月}月`
 
 #### 2. 日次レポートの自動生成
-- `google_auto/gas/CopySpreadsheetReport.gs`
+- `google_auto/gas/copy/CopySpreadsheetReport.gs`
 - スプレッドシートの最新シートをコピー
 - シート名を「① 月日」形式で自動採番
 - 指定セルをクリアし、日付を自動更新
 
 #### 3. 目標管理レポートの自動生成
-- `google_auto/gas/CopyMokuhyoukanriReport.gs`
+- `google_auto/gas/copy/CopyMokuhyoukanriReport.gs`
 - Googleカレンダーから「コーチ面談」イベントを取得
 - 最新シートをコピーし、シート名を日付（YYYYMMDD）に設定
 - 新シートのタブを赤色、旧シートを白色に変更
