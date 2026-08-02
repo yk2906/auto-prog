@@ -124,7 +124,8 @@ function copyMokuhyoukanriReport() {
       Number(baseSheetTitle.substring(4, 6)) - 1,
       Number(baseSheetTitle.substring(6, 8))
     );
-    newSheet.getRange('C7').setValue(meetingDate).setNumberFormat('yyyy/mm/dd');
+    const meetingDateText = Utilities.formatDate(meetingDate, Session.getScriptTimeZone(), 'yyyy/MM/dd');
+    newSheet.getRange('C7').setValue('日付　　：' + meetingDateText + '　（面談日）');
 
     // ABC目標シートの評価セルを進捗報告シートへ同期
     try {
