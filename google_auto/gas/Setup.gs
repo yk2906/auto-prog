@@ -21,13 +21,20 @@ function getConfigValues() {
       date_cell: {row: 8, column: 5}
     },
     goal_management_report: {
-      parent_folder_id: '1D7NbyG5XwS0kDH-MmbmPQadn8EtZ-Usp',
+      source_folder_id: sharedFolderId,
       calendar_id: 'yk050696@gmail.com',
       cells_to_clear: [
         [22, 39], [31, 39], [40, 39], [50, 39], [60, 39], // AM列
         [22, 52], [31, 52], [40, 52], [50, 52], [60, 52]  // AZ列
       ],
       date_cell: {row: 8, column: 5}
+    },
+    abc_goal_sync: {
+      // ABC目標（{期短縮}-ABC目標）が格納されている期フォルダの親フォルダ
+      abc_parent_folder_id: '1U12VUiOrG_1n43ErT0pkY2CJEwtc4X_7',
+      // ABC目標シート → 目標管理進捗報告シートへコピーするセルの対応
+      source_cells: ['J37', 'J47', 'J57', 'J67', 'J77'],
+      target_cells: ['J22', 'J31', 'J40', 'J50', 'J60']
     }
   };
 }

@@ -51,8 +51,8 @@ function copyMokuhyoukanriReport() {
     const config = getConfig();
     const reportConfig = config.goal_management_report;
     
-    if (!reportConfig.parent_folder_id || !reportConfig.calendar_id) {
-      log('エラー: parent_folder_id または calendar_id が設定されていません');
+    if (!reportConfig.source_folder_id || !reportConfig.calendar_id) {
+      log('エラー: source_folder_id または calendar_id が設定されていません');
       return;
     }
 
@@ -62,12 +62,9 @@ function copyMokuhyoukanriReport() {
       return;
     }
 
-    // 親フォルダ配下から最新の期のフォルダを動的に特定
-    const latestPeriodFolder = getLatestPeriodFolder(reportConfig.parent_folder_id);
-
     // 最新のスプレッドシートを取得
     const latestFile = getLatestFileInFolder(
-      latestPeriodFolder.getId(),
+      reportConfig.source_folder_id,
       MimeType.GOOGLE_SHEETS
     );
     
@@ -120,7 +117,14 @@ function copyMokuhyoukanriReport() {
     if (reportConfig.date_cell) {
       updateDate(newSheet, reportConfig.date_cell);
     }
-    
+
+    // ABC目標シートの評価セルを進捗報告シートへ同期
+    try {
+      syncAbcGoalCells(newSheet, config.abc_goal_sync);
+    } catch (syncError) {
+      log('ABC目標セル同期でエラー: ' + syncError.toString());
+    }
+
     log('新しいシート \'' + newSheetTitle + '\' を作成しました');
     
   } catch (error) {
