@@ -118,6 +118,14 @@ function copyMokuhyoukanriReport() {
       updateDate(newSheet, reportConfig.date_cell);
     }
 
+    // C7に面談日を設定
+    const meetingDate = new Date(
+      Number(baseSheetTitle.substring(0, 4)),
+      Number(baseSheetTitle.substring(4, 6)) - 1,
+      Number(baseSheetTitle.substring(6, 8))
+    );
+    newSheet.getRange('C7').setValue(meetingDate).setNumberFormat('yyyy/mm/dd');
+
     // ABC目標シートの評価セルを進捗報告シートへ同期
     try {
       syncAbcGoalCells(newSheet, config.abc_goal_sync);
