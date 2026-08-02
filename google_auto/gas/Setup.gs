@@ -33,8 +33,21 @@ function getConfigValues() {
       // ABC目標（{期短縮}-ABC目標）が格納されている期フォルダの親フォルダ
       abc_parent_folder_id: '1U12VUiOrG_1n43ErT0pkY2CJEwtc4X_7',
       // ABC目標シート → 目標管理進捗報告シートへコピーするセルの対応
-      source_cells: ['J37', 'J47', 'J57', 'J67', 'J77'],
-      target_cells: ['J22', 'J31', 'J40', 'J50', 'J60']
+      // source_sheet_index: ABC目標ファイル内のシート番号（0始まり）
+      sheet_mappings: [
+        {
+          // 「第xx期　上半期　ABC≪氏名≫」シート
+          source_sheet_index: 0,
+          source_cells: ['J37', 'J47', 'J57', 'J67', 'J77'],
+          target_cells: ['J22', 'J31', 'J40', 'J50', 'J60']
+        },
+        {
+          // 「第xx期　上半期　5つの成果目標≪氏名≫」シート
+          source_sheet_index: 1,
+          source_cells: ['X7', 'X17', 'X27', 'X37', 'X47'],
+          target_cells: ['W22', 'W31', 'W40', 'W50', 'W60']
+        }
+      ]
     }
   };
 }

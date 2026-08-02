@@ -18,14 +18,21 @@ function syncAbcGoalCells(targetSheet, syncConfig) {
 
   const opened = openAsGoogleSheet(abcFile, periodFolder);
   try {
-    const sourceSheet = opened.spreadsheet.getSheets()[0];
-    const sourceCells = syncConfig.source_cells;
-    const targetCells = syncConfig.target_cells;
+    const sheets = opened.spreadsheet.getSheets();
+    syncConfig.sheet_mappings.forEach(function(mapping) {
+      const sourceSheet = sheets[mapping.source_sheet_index];
+      if (!sourceSheet) {
+        log('ABC目標のシートが見つかりませんでした（index: ' + mapping.source_sheet_index + '）');
+        return;
+      }
 
-    for (let i = 0; i < sourceCells.length; i++) {
-      const value = sourceSheet.getRange(sourceCells[i]).getValue();
-      targetSheet.getRange(targetCells[i]).setValue(value);
-    }
+      const sourceCells = mapping.source_cells;
+      const targetCells = mapping.target_cells;
+      for (let i = 0; i < sourceCells.length; i++) {
+        const value = sourceSheet.getRange(sourceCells[i]).getValue();
+        targetSheet.getRange(targetCells[i]).setValue(value);
+      }
+    });
     log('ABC目標（' + abcFile.getName() + '）のセルを進捗報告シートへ同期しました');
   } finally {
     if (opened.tempFileId) {
