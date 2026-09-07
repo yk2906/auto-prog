@@ -9,15 +9,15 @@ function syncMarkdownToCellReport2() {
   const currentMonthName = (new Date().getMonth() + 1) + '月';
 
   const syncMap = {
-    '### 内容': 'D14',
-    '### 学んだこと': 'B21',
-    '### 今後の活用': 'B28',
-    '### 活用実践の成果': 'B34',
+    '### 内容': 'D17',
+    '### 学んだこと': 'B23',
+    '### 今後の活用': 'B30',
+    '### 活用実践の成果': 'B36',
   };
-  // 1番目・2番目…の見出しの「一番浅いインデント」だけを同期するセル（順にE9〜E14）
-  const shallowCells = ['E9', 'E10', 'E11', 'E12', 'E13', 'E14'];
+  // 1番目・2番目…の見出しの「一番浅いインデント」だけを同期するセル（順にE9〜E16）
+  const shallowCells = ['E9', 'E10', 'E11', 'E12', 'E13', 'E14', 'E15', 'E16'];
   // 各 E 列と同じ行の S 列に、タイトル行の「（17分）」形式の括弧内を同期（E9↔S9, E10↔S10 …）
-  const shallowTimeCells = ['S9', 'S10', 'S11', 'S12', 'S13', 'S14'];
+  const shallowTimeCells = ['S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16'];
 
   try {
     const ss = findSpreadsheetByName(targetFileName);

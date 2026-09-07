@@ -15,13 +15,13 @@ function syncNotionToCellReport3() {
   const currentMonthName = (new Date().getMonth() + 1) + '月';
 
   const syncMap = {
-    '### 内容': 'D16',
-    '### 学んだこと': 'B22',
-    '### 今後の活用': 'B29',
-    '### 活用実践の成果': 'B35',
+    '### 内容': 'D17',
+    '### 学んだこと': 'B23',
+    '### 今後の活用': 'B30',
+    '### 活用実践の成果': 'B36',
   };
-  const shallowCells = ['E9', 'E10', 'E11', 'E12', 'E13', 'E14'];
-  const shallowTimeCells = ['S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15'];
+  const shallowCells = ['E9', 'E10', 'E11', 'E12', 'E13', 'E14', 'E15', 'E16'];
+  const shallowTimeCells = ['S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15', 'S16'];
   // ----------------
 
   try {
