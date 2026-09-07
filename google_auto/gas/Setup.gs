@@ -9,7 +9,8 @@ function getConfigValues() {
       destination_folder_id: sharedFolderId
     },
     daily_report: {
-      source_folder_id: '1fkouegK9E7AlonDmaqQSaZCCnjJe1eBB',
+      // 期フォルダ（例: 25期上期）の親フォルダ。実行の都度、この直下から最新の期フォルダを自動選択する
+      parent_folder_id: '1D7NbyG5XwS0kDH-MmbmPQadn8EtZ-Usp',
       cells_to_clear: [[9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [13, 4], [20, 2], [9, 19], [10, 19], [11, 19], [12, 19], [13, 19], [9, 24]],
       // スプレッドシート名ごとにクリアするセルを変える場合。キー=ファイル名（完全一致）、値=[[行,列],...]
       cells_to_clear_by_name: {},

@@ -94,12 +94,15 @@ function copySpreadsheetReport() {
     const config = getConfig();
     const reportConfig = config.daily_report;
 
-    if (!reportConfig.source_folder_id) {
-      log('エラー: source_folder_id が設定されていません');
+    if (!reportConfig.parent_folder_id) {
+      log('エラー: parent_folder_id が設定されていません');
       return;
     }
 
-    const spreadsheets = getFilesInFolder(reportConfig.source_folder_id, MimeType.GOOGLE_SHEETS);
+    const periodFolder = getLatestPeriodFolder(reportConfig.parent_folder_id);
+    log(`対象期フォルダ: ${periodFolder.getName()} (ID: ${periodFolder.getId()})`);
+
+    const spreadsheets = getFilesInFolder(periodFolder.getId(), MimeType.GOOGLE_SHEETS);
     if (spreadsheets.length === 0) {
       log('対象フォルダにスプレッドシートが見つかりませんでした');
       return;
