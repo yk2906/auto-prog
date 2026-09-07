@@ -28,9 +28,35 @@ function resolveCellsToClear(reportConfig, spreadsheetName) {
   return reportConfig.cells_to_clear;
 }
 
+// 新しいシートの8行目から「講師」「主催者」等のラベルを探し、その右にある最初の空でないセルの値を返す
+const PERSON_IN_CHARGE_LABELS = ['講師', '主催者'];
+function findPersonInCharge(newSheet) {
+  const row = newSheet.getRange(8, 1, 1, newSheet.getLastColumn()).getValues()[0];
+  const labelIndex = row.findIndex(cell => PERSON_IN_CHARGE_LABELS.includes(String(cell).trim()));
+  if (labelIndex === -1) return null;
+  for (let i = labelIndex + 1; i < row.length; i++) {
+    const val = String(row[i]).trim();
+    if (val) return val;
+  }
+  return null;
+}
+
+// 新しいシートの7行目にある「コース名　：値」「自主勉強会名　：値」形式のセルから値部分だけを取り出す
+function findCourseOrEventName(newSheet) {
+  const row = newSheet.getRange(7, 1, 1, newSheet.getLastColumn()).getValues()[0];
+  const cellText = row.find(cell => String(cell).trim() !== '');
+  if (!cellText) return null;
+  const firstLine = String(cellText).split('\n')[0];
+  const colonIndex = firstLine.indexOf('：');
+  const value = colonIndex === -1 ? firstLine : firstLine.slice(colonIndex + 1);
+  const trimmed = value.replace(/^[\s　]+|[\s　]+$/g, '');
+  return trimmed || null;
+}
+
 // 目次シートのC5～C10に最初の空き行を探してコピー実施日を記載。
-// D・E列: 6行目以降に記入する場合は1行上の値をコピー（前回の担当者等を引き継ぐため）。
-function updateTocSheet(spreadsheet) {
+// D・E列: 新しいシートの実際の内容（講師/主催者、コース名/自主勉強会名）から反映する。
+// 取得できなかった場合のみ、6行目以降なら1行上の値を引き継ぐ。
+function updateTocSheet(spreadsheet, newSheet) {
   const tocSheet = spreadsheet.getSheetByName('目次');
   if (!tocSheet) {
     log('目次シートが見つかりませんでした');
@@ -44,11 +70,22 @@ function updateTocSheet(spreadsheet) {
   }
   const targetRow = 5 + targetIndex;
   tocSheet.getRange(targetRow, 3).setValue(new Date()).setNumberFormat('yyyy/mm/dd');
-  if (targetRow > 5) {
-    const prevValues = tocSheet.getRange(targetRow - 1, 4, 1, 2).getValues();
-    tocSheet.getRange(targetRow, 4, 1, 2).setValues(prevValues);
+
+  const person = findPersonInCharge(newSheet);
+  if (person !== null) {
+    tocSheet.getRange(targetRow, 4).setValue(person);
+  } else if (targetRow > 5) {
+    tocSheet.getRange(targetRow, 4).setValue(tocSheet.getRange(targetRow - 1, 4).getValue());
   }
-  log(`目次シートを更新しました（C${targetRow}にコピー日付、D・Eは1行上をコピー）`);
+
+  const courseOrEvent = findCourseOrEventName(newSheet);
+  if (courseOrEvent !== null) {
+    tocSheet.getRange(targetRow, 5).setValue(courseOrEvent);
+  } else if (targetRow > 5) {
+    tocSheet.getRange(targetRow, 5).setValue(tocSheet.getRange(targetRow - 1, 5).getValue());
+  }
+
+  log(`目次シートを更新しました（C${targetRow}に日付、D列=${person !== null ? person : '(前回値を引き継ぎ)'}、E列=${courseOrEvent !== null ? courseOrEvent : '(前回値を引き継ぎ)'}）`);
 }
 
 function copySpreadsheetReport() {
@@ -103,7 +140,7 @@ function copySpreadsheetReport() {
         updateDate(newSheet, reportConfig.date_cell);
         log('日付を更新しました');
 
-        updateTocSheet(spreadsheet);
+        updateTocSheet(spreadsheet, newSheet);
         log(`スプレッドシート ${spreadsheetItem.name} に新しいシート '${newSheetTitle}' を作成しました`);
 
       } catch (error) {
