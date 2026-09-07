@@ -1,17 +1,53 @@
-import subprocess
+import glob
 import os
+import re
+from datetime import date
+
+from thunderbird_util import get_submit_dir, launch_compose
+
+
+def find_latest_report(submit_dir: str, today: date) -> str:
+    """状況報告書_◯月.docx のうち、今月に一番近い(超えない)月のものを選ぶ"""
+    pattern = re.compile(r"^状況報告書_(\d{1,2})月\.docx$")
+    candidates = []
+    for path in glob.glob(os.path.join(submit_dir, "状況報告書_*月.docx")):
+        m = pattern.match(os.path.basename(path))
+        if m:
+            candidates.append((int(m.group(1)), path))
+
+    if not candidates:
+        raise FileNotFoundError(f"状況報告書_◯月.docx が見つかりません: {submit_dir}")
+
+    def distance_from_today(month: int) -> int:
+        return (today.month - month) % 12
+
+    return min(candidates, key=lambda c: distance_from_today(c[0]))[1]
+
+
+def find_latest_progress_sheet(submit_dir: str) -> str:
+    """先頭がYYYYMMDDの目標管理進捗報告シートのうち、日付が最新のものを選ぶ"""
+    pattern = re.compile(r"^(\d{8})\(小濵佑斗\).*目標管理進捗報告シート\.xlsx$")
+    candidates = []
+    for path in glob.glob(os.path.join(submit_dir, "*(小濵佑斗)*目標管理進捗報告シート.xlsx")):
+        m = pattern.match(os.path.basename(path))
+        if m:
+            candidates.append((m.group(1), path))
+
+    if not candidates:
+        raise FileNotFoundError(f"◯◯(小濵佑斗)◯◯目標管理進捗報告シート.xlsx が見つかりません: {submit_dir}")
+
+    return max(candidates, key=lambda c: c[0])[1]
+
 
 def compose_mail_with_direct_drive():
-    # 添付するファイルのWSL2側パス（複数追加可）
-    wsl_file_paths = [
-        "/mnt/g/マイドライブ/株式会社ボールド/提出/状況報告書_6月.docx",
-        "/mnt/g/マイドライブ/株式会社ボールド/提出/20260616(小濵佑斗)２４下目標管理進捗報告シート.xlsx",
-    ]
+    today = date.today()
+    submit_dir = get_submit_dir()
 
-    win_file_paths = []
-    for wsl_path in wsl_file_paths:
-        result = subprocess.run(["wslpath", "-w", wsl_path], capture_output=True, text=True)
-        win_file_paths.append(result.stdout.strip())
+    # 添付するファイルのパス（フォルダ内の該当ファイルから最新のものを自動選択）
+    file_paths = [
+        find_latest_report(submit_dir, today),
+        find_latest_progress_sheet(submit_dir),
+    ]
 
     to_email = "y_kohama@bold.ne.jp"
     # Cc アドレス（複数追加可。不要な場合は空リストにする）
@@ -19,14 +55,8 @@ def compose_mail_with_direct_drive():
     subject = "【面談資料の提出】1495・小濵佑斗"
     body = "綱島さん\n\nお疲れ様です。技術部の小濵佑斗です。\n\n今月の「状況報告書」及び「24下目標管理進捗報告シート」を提出致します。\n\nご確認の程、よろしくお願いします。"
 
-    attachment_str = ",".join(win_file_paths)
-    compose_args = f"to='{to_email}',subject='{subject}',body='{body}',attachment='{attachment_str}'"
-    if cc_emails:
-        compose_args += f",cc='{','.join(cc_emails)}'"
+    launch_compose(to_email, subject, body, file_paths, cc_emails)
 
-    thunderbird_path = "/mnt/c/Program Files/Mozilla Thunderbird/thunderbird.exe"
-    subprocess.Popen([thunderbird_path, "-compose", compose_args])
-    print(f"Thunderbirdを起動しました（添付ファイル: {len(win_file_paths)}件）")
 
 if __name__ == "__main__":
     compose_mail_with_direct_drive()
