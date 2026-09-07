@@ -8,6 +8,12 @@ function generateNewSheetTitle(latestSheetTitle) {
   return `${nextNumber} ${month}月${day}日`;
 }
 
+// シート名末尾の「MM月DD日」からMMを取り出す（該当しなければnull）
+function extractMonthFromTitle(title) {
+  const match = (title || '').match(/(\d{2})月\d{2}日$/);
+  return match ? match[1] : null;
+}
+
 function resolveCellsToClear(reportConfig, spreadsheetName) {
   if (reportConfig.cells_to_clear_by_name[spreadsheetName]) {
     log(`スプレッドシート名「${spreadsheetName}」用のクリア設定を使用（完全一致）`);
@@ -74,6 +80,12 @@ function copySpreadsheetReport() {
         }
 
         const latestSheet = sheets[sheets.length - 1];
+        const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+        if (extractMonthFromTitle(latestSheet.getName()) === currentMonth) {
+          log(`スプレッドシート ${spreadsheetItem.name}: 今月(${currentMonth}月)のシート '${latestSheet.getName()}' が既に存在するためスキップします`);
+          return;
+        }
+
         const newSheetTitle = generateNewSheetTitle(latestSheet.getName());
         const newSheet = latestSheet.copyTo(spreadsheet);
         newSheet.setName(newSheetTitle);
